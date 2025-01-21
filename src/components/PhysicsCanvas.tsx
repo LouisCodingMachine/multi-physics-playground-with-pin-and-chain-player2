@@ -450,7 +450,7 @@ const PhysicsCanvas: React.FC = () => {
   // }, []);
 
   useEffect(() => {
-    socket.on('drawShape', (data: { points: Matter.Vector[]; playerId: string; customId: string; collisionCategory?: number; groupNumber?: number}) => {
+    socket.on('drawShape', (data: { points: Matter.Vector[]; playerId: string; customId: string; currentLevel: number; collisionCategory?: number; groupNumber?: number}) => {
       console.log("playerId: ", data.playerId);
   
       // 도형을 생성하며 customId를 설정
@@ -463,6 +463,11 @@ const PhysicsCanvas: React.FC = () => {
   
           if (result.nailsInShape.length > 0) {
             const targetBody = result.body;
+
+            if (currentLevel === 3) {
+              console.log("sfdasdasfd")
+              Matter.Body.setAngularVelocity(result.body, -0.05);
+            }
 
             // nailsInShape와 생성된 도형을 Constraint로 연결
             if (result.nailsInShape) {
@@ -650,8 +655,9 @@ const PhysicsCanvas: React.FC = () => {
             return ct.bodyA === targetBody || ct.bodyB === targetBody;
           });
 
-          // pin 하나만 있을 때 (pin에 연결된 것이 없을 때)
+          // 
           if(constraintsToRemove.length === 0) {
+            console.log("constraintsToRemove.length: ", constraintsToRemove.length)
             socket.emit('releaseCategory', {
               playerId: 'player2',
               currentLevel,
@@ -687,7 +693,7 @@ const PhysicsCanvas: React.FC = () => {
                     mask: 0xFFFF
                   };
                 } else { // "otherBody"가 이외의 다른 Constraint에 연결되어 있다면
-                  // isOtherContraintBody = true
+                  isOtherContraintBody = true
                   // otherContraintBodyCategory = otherBody.collisionFilter.category;
                   // otherConstraints.forEach(ct => {
                   //   // ─────────────────────────────────────────────────────────
@@ -772,15 +778,17 @@ const PhysicsCanvas: React.FC = () => {
               socket.emit('releaseCategory', {
                 playerId: 'player2',
                 currentLevel,
-                category: otherContraintBodyCategory
+                category: targetBody.collisionFilter.category,
               });
             }
           }
 
-          
-
           // 6) 마지막으로 해당 body 자체 제거
           Matter.World.remove(engineRef.current.world, targetBody);
+          
+          if(targetBody.label?.startsWith("nail")) {
+            removeNail(targetBody);
+          }
 
           console.log(`Body(label='${data.customId}') & all connected constraints removed`);
         }
@@ -840,6 +848,10 @@ const PhysicsCanvas: React.FC = () => {
         });
         // 5) 마지막으로 원본 Body 제거
         Matter.World.remove(engineRef.current.world, bodyToRemove);
+
+        if (bodyToRemove.label?.startsWith("nail")) {
+          removeNail(bodyToRemove);
+        }
       }
       // // 3) 해당 Constraint 제거 & 연결된 nail Body 처리
       // constraintsOfMainBody.forEach(constraint => {
@@ -2134,7 +2146,8 @@ const PhysicsCanvas: React.FC = () => {
           mask: 0x0001,
         }
       });
-
+      
+      /*
       // 못(nail) 생성
       const centerX7_0 = 230;
       const centerY7_0 = 410;
@@ -2221,16 +2234,17 @@ const PhysicsCanvas: React.FC = () => {
           visible: false, // Constraint 시각화를 비활성화
         },
       });
+      */
 
       Matter.World.add(world, [
         ...walls,
         ball,
         star,
         horizontalDownPlatform,
-        nail7_0,
-        constraint7_0,
-        nail7_1,
-        constraint7_1,
+        // nail7_0,
+        // constraint7_0,
+        // nail7_1,
+        // constraint7_1,
       ]);
 
       ballRef.current = ball;
@@ -3141,9 +3155,7 @@ const PhysicsCanvas: React.FC = () => {
         // },
       });
 
-      if (currentLevel === 3) {
-        Matter.Body.setAngularVelocity(body, -0.05);
-      }
+      console.log("currentLevel123123: ", currentLevel);
 
       if (body && myGenerated && !customId) {
         console.log("도형 데이터를 서버로 전송")
@@ -3372,6 +3384,20 @@ const PhysicsCanvas: React.FC = () => {
       const nailBodies = bodiesAtPoint.filter(body => 
         body.label && body.label.startsWith('nail')
       );
+      
+      if(nailBodies.length > 0) {
+        const customId = nailBodies[0].label;
+        // 서버에 삭제 요청 전송
+        socket.emit('erase', {
+          customId,
+          playerId: 'player2',
+          currentLevel,
+          isRelease: false,
+        });
+
+        socket.emit('changeTurn', { nextPlayerId: 'player1', currentLevel });
+        return;
+      } 
 
       // Constraint 중에서, 클릭 위치(mousePosition) 근처에 있고 label이 "chain"으로 시작하는 Constraint를 찾기
       const nearChainConstraints = getChainConstraintsNearPoint(
@@ -3401,18 +3427,7 @@ const PhysicsCanvas: React.FC = () => {
         return;
       }
 
-      if(nailBodies.length > 0) {
-        const customId = nailBodies[0].label;
-        // 서버에 삭제 요청 전송
-        socket.emit('erase', {
-          customId,
-          playerId: 'player2',
-          currentLevel,
-          isRelease: false,
-        });
-
-        socket.emit('changeTurn', { nextPlayerId: 'player1', currentLevel });
-      } else {
+      if (nailBodies.length === 0) {
         for (let body of bodies) {
           if (Matter.Bounds.contains(body.bounds, mousePosition) &&
               !staticObjects.includes(body.label)) {
