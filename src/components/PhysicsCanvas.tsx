@@ -3869,14 +3869,14 @@ const PhysicsCanvas: React.FC = () => {
           >
             <Pin size={24} />
           </button>
-          <button
+          {/* <button
             onClick={() => handleToolChange('chain')}
             className={`p-2 rounded ${
               tool === 'chain' ? 'bg-blue-500 text-white' : 'bg-gray-200'
             }`}
           >
             <Link size={24} />
-          </button>
+          </button> */}
           {/* 밀기 도구 버튼 */}
           <button
             onClick={() => handleToolChange('push')}
