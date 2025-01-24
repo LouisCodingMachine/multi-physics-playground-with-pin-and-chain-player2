@@ -3814,7 +3814,7 @@ const PhysicsCanvas: React.FC = () => {
           <table className="min-w-full table-auto border-collapse">
             <thead>
               <tr>
-                <th className="border p-2">레벨</th>
+                <th className="border p-2">스테이지</th>
                 {Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1).map(level => (
                   <th key={level} className="border p-2 text-center">{level}</th>
                 ))}
@@ -3826,7 +3826,10 @@ const PhysicsCanvas: React.FC = () => {
                 {Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1).map(level => {
                   const isCleared = completedLevels.includes(level);
                   return (
-                    <td key={level} className="border p-2 text-center">
+                    <td
+                      key={level}
+                      className={`border p-2 text-center font-bold text-white ${isCleared ? 'bg-green-500' : 'bg-red-500'}`}
+                    >
                       {isCleared ? '완료' : '미완료'}
                     </td>
                   );
@@ -3975,7 +3978,7 @@ const PhysicsCanvas: React.FC = () => {
           >
             <ChevronLeft size={24} />
           </button>
-          <span className="py-2 px-4 bg-gray-100 rounded">레벨 {currentLevel}</span>
+          <span className="py-2 px-4 bg-gray-100 rounded">스테이지 {currentLevel}</span>
           <button
             onClick={() => handleLevelChange('next')}
             disabled={currentLevel === TOTAL_LEVELS}
