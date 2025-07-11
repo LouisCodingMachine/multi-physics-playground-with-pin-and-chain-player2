@@ -26,24 +26,24 @@ export const createLevel6: LevelFactory = (world) => {
   });
 
   // 3) 레버 판자
-  const plank = Matter.Bodies.rectangle(400, 350, 400, 20, {
-    density: 0.001,
-    friction: 0.2,
-    restitution: 0.2,
+  const plank = Matter.Bodies.rectangle(400, 350, 650, 20, {
+    density: 0,
+    friction: 0,
+    restitution: 0.5,
     label: 'leverPlank',
     render: { fillStyle: '#6b7280' },
     collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
 
   // 4) 왼쪽 스쿱
-  const leftBase  = Matter.Bodies.rectangle(200, 340,  80, 10, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const leftWallA = Matter.Bodies.rectangle(160, 325,  10, 40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const leftWallB = Matter.Bodies.rectangle(240, 325,  10, 40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const leftBase  = Matter.Bodies.rectangle(120, 340,  80, 10, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const leftWallA = Matter.Bodies.rectangle(80, 325,  10, 40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const leftWallB = Matter.Bodies.rectangle(160, 325,  10, 40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
 
   // 5) 오른쪽 스쿱
-  const rightBase  = Matter.Bodies.rectangle(600, 340, 140, 10, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const rightWallA = Matter.Bodies.rectangle(530, 325, 10,  40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const rightWallB = Matter.Bodies.rectangle(670, 325, 10,  40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const rightBase  = Matter.Bodies.rectangle(570, 340, 300, 10, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const rightWallA = Matter.Bodies.rectangle(420, 325, 10,  40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const rightWallB = Matter.Bodies.rectangle(720, 325, 10,  40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
 
   // 6) 레버 복합체 생성
   const lever = Matter.Body.create({
@@ -64,7 +64,7 @@ export const createLevel6: LevelFactory = (world) => {
   // 8) 힌지 연결
   const pivot = Matter.Constraint.create({
     bodyA: lever,
-    pointA: { x: 50, y: 0 },
+    pointA: { x: 30, y: 0 },
     bodyB: fulcrum,
     pointB: { x: 0, y: 0 },
     length: 0,
@@ -73,8 +73,9 @@ export const createLevel6: LevelFactory = (world) => {
   });
 
   // 9) 공 생성
-  const ball = Matter.Bodies.circle(150, 300, 15, {
-    frictionAir:  0.001,  
+  const ball = Matter.Bodies.circle(100, 300, 15, {
+    frictionAir:  0,
+    friction: 0,  
     label: 'ball',
     render: { fillStyle: '#ef4444' },
     collisionFilter: { category: 0x0001, mask: 0xFFFF },

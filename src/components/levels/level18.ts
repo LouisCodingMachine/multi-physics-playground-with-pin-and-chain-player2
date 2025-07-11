@@ -1,142 +1,118 @@
-// src/levels/level23.ts
-import Matter from 'matter-js';
-import type { LevelFactory } from './index';
+// src/levels/level18.ts
+import Matter from 'matter-js'
+import type { LevelFactory } from './index'
 
 export const createLevel18: LevelFactory = (world) => {
-  // 기본 벽 옵션
-  const wallOptions = {
+  // ─── 바닥 ───
+  const floor = Matter.Bodies.rectangle(400, 610, 810, 20, {
     isStatic: true,
-    label: 'wall',
-    collisionFilter: {
-    category: 0x0001,
-    mask: 0xFFFF,
+    label: 'wall_bottom',
+    render: { fillStyle: '#94a3b8' },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
+  })
+
+  // ─── 공 (작은 힘에도 빠르게 움직이도록 restitution 과 density 조정) ───
+  const ball = Matter.Bodies.circle(50, 220, 15, {
+    label: 'ball',
+    frictionAir: 0,      // 공기 저항 제거
+    friction: 0,         // 표면 마찰 제거
+    render: { fillStyle: '#ef4444' },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
+  })
+
+  // ─── 지렛대 + 피벗 ───
+  const lever = Matter.Bodies.rectangle(165, 220, 350, 20, {
+    label: 'lever',
+    render: { fillStyle: '#4B0082' },
+    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFF & ~0x0002 },
+  })
+  const pivot = Matter.Bodies.circle(lever.position.x + 20, 280, 10, {
+    isStatic: true,
+    label: 'nail8_0',
+    render: {
+      fillStyle: 'rgba(0,0,0,0)',
+      strokeStyle: '#fbbf24',
+      lineWidth: 3,
     },
-  };
-  const walls = [
-    Matter.Bodies.rectangle(400, 610, 810, 20, { ...wallOptions, label: 'wall_bottom' }),
-  ];
-  walls.forEach((wall) => {
-    Matter.Body.setStatic(wall, true);
-    wall.render.fillStyle = '#94a3b8';
-  });
-
-  // 1) 왼쪽에 세로로 긴 직사각형 타워
-  const leftTower = Matter.Bodies.rectangle(
-    80, 500, 80, 300,
-    {
-      isStatic: true,
-      label: 'leftTower_23',
-      render: { fillStyle: '#6b7280' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  // 2) 왼쪽 타워 위에 공 얹기
-  const ballStartY = 500 - 300 / 2 - 15;
-  const ball = Matter.Bodies.circle(
-    80, ballStartY, 15,
-    {
-      label: 'ball',
-      frictionAir:  0.001,  
-      render: { fillStyle: '#ef4444' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  // 3) 화면 2/3 지점에 두 번째 타워
-  const midX = (800 * 2) / 3;
-  const midTower = Matter.Bodies.rectangle(
-    midX, 500, 80, 300,
-    {
-      isStatic: true,
-      label: 'midTower_23',
-      render: { fillStyle: '#6b7280' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  // 4) pivot: midTower 왼쪽 상단 모서리
-  const pivotX = midX - 80 / 2;
-  const pivotY = 500 - 300 / 2;
-  const pivot = Matter.Bodies.circle(
-    pivotX, pivotY, 5,
-    {
-      isStatic: true,
-      label: 'axePivot_23',
-      render: { fillStyle: '#fbbf24' },
-      collisionFilter: { group: -1, category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  // 5) axeHead & axeHandle 복합체
-  const headSize = 100;
-  const handleWidth = 10;
-  const handleHeight = 250;
-  const headCenterX = pivotX + headSize / 2-100;
-  const headCenterY = pivotY + headSize / 2;
-  const handleCenterX = headCenterX - 45+90;
-  const handleCenterY = headCenterY + headSize / 2 + handleHeight / 2-350;
-
-  const axe = Matter.Body.create({
-    parts: [
-      Matter.Bodies.rectangle(
-        headCenterX, headCenterY, headSize, headSize,
-        { render: { fillStyle: '#b45309' } }
-      ),
-      Matter.Bodies.rectangle(
-        handleCenterX, handleCenterY, handleWidth, handleHeight,
-        { render: { fillStyle: '#92400e' } }
-      )
-    ],
-    label: 'axe_23',
-    isStatic: false,
-    collisionFilter: { group: -1, category: 0x0001, mask: 0xFFFF },
-    frictionAir: 0.001,
-    restitution: 0.2,
-  });
-
-  // 6) pivot ↔ axe 힌지
-  const hinge = Matter.Constraint.create({
-    bodyA: axe,
-    pointA: { x: 50, y: -20},
+    collisionFilter: { group: -1, category: 0x0002, mask: 0x0000 },
+  })
+  const leverConstraint = Matter.Constraint.create({
+    bodyA: lever,
+    pointA: { x: 0, y: 0 },
     bodyB: pivot,
     pointB: { x: 0, y: 0 },
     length: 0,
     stiffness: 1,
-    damping: 0,
     render: { visible: false },
-  });
+  })
 
-  // 7) 오른쪽 맨 끝에 떠 있는 별
-  const star = Matter.Bodies.trapezoid(
-    750, 300, 20, 20, 1,
-    {
-      isStatic: true,
-      label: 'balloon',
-      render: { fillStyle: '#fbbf24' },
-      collisionFilter: { category: 0x0001, mask: 0x0001 },
-    }
-  );
+  // ─── 중간 플랫폼 ───
+  const rect1 = Matter.Bodies.rectangle(700, 320, 100, 20, {
+    isStatic: true,
+    label: 'rect1',
+    render: { fillStyle: '#1e40af' },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
+  })
+  const rect2 = Matter.Bodies.rectangle(20, 300, 20, 20, {
+    isStatic: true,
+    label: 'rect2',
+    render: { fillStyle: '#1e40af' },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
+  })
 
-  // 월드에 바디 추가
-  Matter.World.add(world, [...walls,
-    leftTower,
+  // ─── 목표 별(balloon) ───
+  const star = Matter.Bodies.trapezoid(750, 300, 20, 20, 1, {
+    render: { fillStyle: '#fbbf24' },
+    label: 'balloon',
+    isStatic: true,
+    collisionFilter: { category: 0x0001, mask: 0x0001 },
+  })
+
+  // ─── 위아래 이동 장애물 (static) ───
+  const movingObs = Matter.Bodies.rectangle(700, 225, 80, 80, {
+    isStatic: true,
+    label: 'movingObstacle',
+    render: { fillStyle: '#dc2626' },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
+  })
+
+  // ─── 월드에 추가 ───
+  Matter.World.add(world, [
+    floor,
     ball,
-    midTower,
+    lever,
     pivot,
-    axe,
-    hinge,
+    leverConstraint,
+    rect1,
+    rect2,
     star,
-  ]);
+    movingObs,
+  ])
 
-  // 반환
-  return [...walls,
-    leftTower,
+  // ─── 수동 애니메이션: setInterval로 위아래 왕복 ───
+  let dir = 1
+  const topY    = 0
+  const bottomY = 270
+  const step    = 2
+
+  const mover = () => {
+    const nextY = movingObs.position.y + step * dir
+    if (nextY > bottomY) dir = -1
+    else if (nextY < topY) dir = 1
+    const clampedY = Math.max(topY, Math.min(bottomY, movingObs.position.y + step * dir))
+    Matter.Body.setPosition(movingObs, { x: movingObs.position.x, y: clampedY })
+  }
+
+  setInterval(mover, 1000 / 60) // 약 60fps
+
+  return [
+    floor,
     ball,
-    midTower,
+    lever,
     pivot,
-    axe,
-    hinge,
+    rect1,
+    rect2,
     star,
-  ];
-};
+    movingObs,
+  ]
+}
