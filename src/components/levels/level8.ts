@@ -25,13 +25,13 @@ export const createLevel8: LevelFactory = (world) => {
     isStatic: true,
     label: 'left_box',
     render: { fillStyle: '#10b981' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    collisionFilter: { category: 0x0002, mask: 0xFFFD },
   });
   const rightBox = Matter.Bodies.rectangle(700, 500, 80, 30, {
     isStatic: true,
     label: 'right_box',
     render: { fillStyle: '#10b981' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    collisionFilter: { category: 0x0002, mask: 0xFFFD },
   });
 
   // 2) 공 생성 (왼쪽 박스 위)

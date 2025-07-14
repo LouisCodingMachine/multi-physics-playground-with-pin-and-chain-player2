@@ -78,24 +78,24 @@ export const createLevel4: LevelFactory = (world) => {
   // 4) 스쿱(Scoop) 생성
   const handle = Matter.Bodies.rectangle(475, 240, 50, 420, {
     label: 'handle',
-    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFF & ~0x0002 },
+    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFD},
     render: { fillStyle: '#10b981' },
   });
   const head1 = Matter.Bodies.rectangle(425, 475, 150, 50, {
     label: 'head1',
-    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFF & ~0x0002 },
+    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFD},
     render: { fillStyle: '#10b981' },
   });
   const head2 = Matter.Bodies.rectangle(325, 450, 50, 100, {
     label: 'head2',
-    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFF & ~0x0002 },
+    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFD},
     render: { fillStyle: '#10b981' },
   });
   const scoop = Matter.Body.create({
     parts: [handle, head1, head2],
     isStatic: false,
     label: 'scoop',
-    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFF & ~0x0002 },
+    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFD},
   });
 
   // 5) 별(Star) 생성

@@ -3,14 +3,27 @@ import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
 export const createLevel5: LevelFactory = (world) => {
+  const wallOptions: Matter.IBodyDefinition = {
+      isStatic: true,
+      label: 'wall',
+      collisionFilter: {
+        group: -1,
+        category: 0x0001,
+        mask: 0xFFFF,
+      },
+      render: { fillStyle: '#94a3b8' },
+    };
+    const walls = [
+      Matter.Bodies.rectangle(400, 610, 810, 20, { ...wallOptions, label: 'wall_bottom' }),
+    ];
   // 1) 왼쪽 박스 두 개 (첫 번째가 더 높음)
-  const leftHigh = Matter.Bodies.rectangle(40, 500, 80, 200, { 
+  const leftHigh = Matter.Bodies.rectangle(35, 500, 80, 200, { 
     isStatic: true,
     label: 'leftHigh',
     render: { fillStyle: '#10b981' },
     collisionFilter: { category: 0x0001, mask: 0xFFFF }
   });
-  const leftLow = Matter.Bodies.rectangle(120, 520, 80, 160, { 
+  const leftLow = Matter.Bodies.rectangle(115, 520, 80, 160, { 
     isStatic: true,
     label: 'leftLow',
     render: { fillStyle: '#10b981' },
@@ -57,13 +70,13 @@ export const createLevel5: LevelFactory = (world) => {
   const hingeBox = Matter.Bodies.rectangle(400, 155, 300, 35, {
     label: 'lever',
     render: { fillStyle: '#6b7280' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF }
+    collisionFilter: { category: 0x0002, mask: 0xFFFF }
   });
   const fulcrum = Matter.Bodies.circle(370, 400, 5, {
     isStatic: true,
     label: 'fulcrum',
     render: { fillStyle: 'rgba(0,0,0,0)', strokeStyle: '#fbbf24', lineWidth: 1 },
-    collisionFilter: { group: -1, category: 0x0002, mask: 0x0000 }
+    collisionFilter: { group: -1, category: 0x0001, mask: 0x0001 }
   });
   const pivot = Matter.Constraint.create({
     bodyA: hingeBox,
@@ -71,7 +84,8 @@ export const createLevel5: LevelFactory = (world) => {
     bodyB: fulcrum,
     pointB: { x: 0, y: 0 },
     length: 0,
-    stiffness: 1,
+    stiffness: 0.5,
+  // damping:   0.5,
     render: { visible: false }
   });
 
@@ -85,6 +99,7 @@ export const createLevel5: LevelFactory = (world) => {
 
   // 월드에 바디 추가
   Matter.World.add(world, [
+    ...walls,
     leftHigh, leftLow,
     ball,
     gunBoxTall, gunBoxWide, gunBoxSmall,
@@ -95,6 +110,7 @@ export const createLevel5: LevelFactory = (world) => {
 
   // 반환
   return [
+    ...walls,
     leftHigh, leftLow,
     ball,
     gunBoxTall, gunBoxWide, gunBoxSmall,

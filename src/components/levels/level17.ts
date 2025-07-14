@@ -54,9 +54,9 @@ export const createLevel17: LevelFactory = (world) => {
 
   // 3) 아래쪽에 동일한 기울기의 대각선 플랫폼
   const diagBottom = Matter.Bodies.rectangle(
-    550,
-    300,
-    300,
+    600,
+    250,
+    350,
     20,
     {
       isStatic: true,

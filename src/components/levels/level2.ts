@@ -38,9 +38,7 @@ export const createLevel2: LevelFactory = (world) => {
     isStatic: true,
     label: 'horizontal_platform',
     render: { fillStyle: '#6b7280' },
-    collisionFilter: {
-      category: 0x0001,
-      mask: 0xFFFF,
+    collisionFilter: {category: 0x0002, mask: 0xFFFD,
     },
   });
 

@@ -121,7 +121,7 @@ export const createLevel9: LevelFactory = (world) => {
     floor, support1,support2,
     lever, fulcrum, pivot,
     ball, star,
-    upperRightBox, lowerRightBox, lowerLeftBox, upperLeftBox, bottomBox,
+    bottomBox,
   ]);
 
   // 반환
@@ -130,6 +130,6 @@ export const createLevel9: LevelFactory = (world) => {
     floor, support1,support2,
     lever, fulcrum, pivot,
     ball, star,
-    upperRightBox, lowerRightBox, lowerLeftBox, upperLeftBox, bottomBox
+    bottomBox
   ];
 };

@@ -58,9 +58,7 @@ export const createLevel1: LevelFactory = (world) => {
       {
         isStatic: true,
         label: `tower${i}`,
-        collisionFilter: {
-          category: 0x0001,
-          mask: 0xFFFF,
+        collisionFilter: {category: 0x0002, mask: 0xFFFD,
         },
       }
     )

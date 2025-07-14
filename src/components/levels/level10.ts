@@ -1,8 +1,15 @@
 import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
+// 스테이지 10 힌지 위치 상수
+export const LEVEL10_HINGE_Y = {
+  top:    60,
+  middle: 160,
+  bottom: 260,
+};
+
 export const createLevel10: LevelFactory = (world) => {
-  // 기본 벽 옵션
+  // 0) 기본 벽 설정
   const wallOptions = {
     isStatic: true,
     label: 'wall',
@@ -43,7 +50,7 @@ export const createLevel10: LevelFactory = (world) => {
     collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
 
-  // 3-2) 공 튀김 방지 상자
+  // 3-2) 안전 박스
   const safeBox = Matter.Bodies.rectangle(810, 380, 40, 450, {
     isStatic: true,
     label: 'safe_box',
@@ -51,10 +58,11 @@ export const createLevel10: LevelFactory = (world) => {
     collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
 
-  const hingeGroup = -10; // 독립된 고유 그룹 번호
+  // 힌지 그룹
+  const hingeGroup = -10;
 
   // 4) 힌지 달린 상자
-  const hingeBox = Matter.Bodies.rectangle(350, 60, 150, 100, {
+  const hingeBox = Matter.Bodies.rectangle(350, LEVEL10_HINGE_Y.middle, 150, 100, {
     isStatic: true,
     label: 'hingeBox',
     frictionAir: 0,
@@ -64,7 +72,7 @@ export const createLevel10: LevelFactory = (world) => {
     collisionFilter: { category: 0x0002, mask: 0x0001, group: hingeGroup },
   });
 
-  // 5) 힌지 축 생성
+  // 5) 힌지 축 (nail)
   const nail15_0 = Matter.Bodies.circle(
     hingeBox.position.x,
     hingeBox.position.y,
@@ -72,20 +80,12 @@ export const createLevel10: LevelFactory = (world) => {
     {
       isStatic: true,
       label: 'nail',
-      collisionFilter: {
-        category: 0x0002,
-        mask: 0x0001,
-        group: hingeGroup,
-      },
-      render: {
-        fillStyle: 'rgba(0,0,0,0)',
-        strokeStyle: '#fbbf24',
-        lineWidth: 3,
-      },
+      collisionFilter: { category: 0x0002, mask: 0x0001, group: hingeGroup },
+      render: { fillStyle: 'rgba(0,0,0,0)', strokeStyle: '#fbbf24', lineWidth: 3 },
     }
   );
 
-  // 6) 제약 조건 설정
+  // 6) 제약 조건 (pivot)
   const pivot15 = Matter.Constraint.create({
     bodyA: hingeBox,
     pointA: { x: 0, y: 0 },
@@ -94,10 +94,11 @@ export const createLevel10: LevelFactory = (world) => {
     length: 0,
     stiffness: 1,
     damping: 0,
+    collideConnected: false,
     render: { visible: false },
   });
 
-  // 7) 공 및 별 생성
+  // 7) 공 및 별
   const ball = Matter.Bodies.circle(350, 400, 15, {
     label: 'ball',
     restitution: 1,
@@ -106,7 +107,6 @@ export const createLevel10: LevelFactory = (world) => {
     render: { fillStyle: '#ef4444' },
     collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
-
   const star = Matter.Bodies.trapezoid(720, 390, 20, 20, 1, {
     isStatic: true,
     label: 'balloon',
@@ -114,7 +114,7 @@ export const createLevel10: LevelFactory = (world) => {
     collisionFilter: { category: 0x0001, mask: 0x0001 },
   });
 
-  // 8) 월드에 바디 추가
+  // 8) 월드에 추가
   Matter.World.add(world, [
     ...walls,
     floor1,
@@ -128,22 +128,7 @@ export const createLevel10: LevelFactory = (world) => {
     star,
   ]);
 
-  // 9) 힌지 상자와 축 애니메이션 (상하 이동)
-  let dir = 1;
-  const topY = 100;
-  const bottomY = 250;
-  const step = 2;
-  const mover = () => {
-    const nextY = hingeBox.position.y + step * dir;
-    if (nextY > bottomY) dir = -1;
-    else if (nextY < topY) dir = 1;
-    const deltaY = step * dir;
-    Matter.Body.translate(hingeBox, { x: 0, y: deltaY });
-    Matter.Body.translate(nail15_0, { x: 0, y: deltaY });
-  };
-  setInterval(mover, 1000 / 30);
-
-  // 10) 반환
+  // 9) 반환
   return [
     ...walls,
     floor1,

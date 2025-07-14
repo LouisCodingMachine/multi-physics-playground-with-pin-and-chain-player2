@@ -4,6 +4,7 @@ import { Eraser, Pen, Pin, ChevronLeft, ChevronRight, RefreshCw, Hand, Circle, L
 import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
 import { levelFactories } from './levels';
+import { LEVEL10_HINGE_Y } from './levels/level10';
 // import Timer from './Timer';
 
 interface LogInfo {
@@ -28,10 +29,17 @@ declare module 'matter-js' {
   }
 }
 const TOTAL_LEVELS = 20; // 총 스테이지 수를 정의합니다.
-const p1 = 'player2'
-const p2 = 'player1'
+interface PhysicsCanvasProps {
+  isPlayerOne: boolean;
+}
 // 맵이 변할 때 마다 실행됨.
-const PhysicsCanvas: React.FC = () => {
+
+const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({ isPlayerOne }) => {
+  // 여기서 p1/p2 를 결정
+  const p1 = isPlayerOne ? 'player1' : 'player2';
+  const p2 = isPlayerOne ? 'player2' : 'player1';
+  const [hingePosIndex, setHingePosIndex] = useState<0|1|2>(1);
+  const hingeOrder: ('top'|'middle'|'bottom')[] = ['top','middle','bottom'];
   const socket = useSocket();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef(Matter.Engine.create({
@@ -110,7 +118,25 @@ const PhysicsCanvas: React.FC = () => {
       });
     }
   }, [gameEnded])
+useEffect(() => {
+  const handler = (data: {
+    level: number;
+    hingePosIndex: 0|1|2;
+    playerId: string;
+  }) => {
+    // only if we’re on the same level
+    if (data.level !== currentLevelRef.current) return;
 
+    // update the hinge index & retrigger world rebuild
+    setHingePosIndex(data.hingePosIndex);
+    setResetTrigger(t => !t);
+  };
+
+  socket.on('changeHingePosition', handler);
+  return () => {
+    socket.off('changeHingePosition', handler);
+  };
+}, [socket]);
   // -----------------------------------------------
   // 2) 서버에서 "completedLevelsResponse" 받기
   //    => completedLevels 업데이트
@@ -137,6 +163,36 @@ const PhysicsCanvas: React.FC = () => {
       socket.off('completedLevelsUpdated');
     };
   }, [socket]);
+  // world: Matter.World
+  function collectConnectedBodies(startBody: Matter.Body, world: Matter.World) {
+    const seenBodies = new Set<Matter.Body>();
+    const queue: Matter.Body[] = [startBody];
+
+    while (queue.length) {
+      const body = queue.shift()!;
+      if (seenBodies.has(body)) continue;
+      seenBodies.add(body);
+
+      // 이 body와 연결된 constraint들 찾기
+      const constraints = Matter.Composite.allConstraints(world)
+        .filter(ct => ct.bodyA === body || ct.bodyB === body);
+
+      for (const ct of constraints) {
+        // constraint에 연결된 반대편 body
+        const other = ct.bodyA === body ? ct.bodyB : ct.bodyA;
+        if (other && !seenBodies.has(other)) {
+          queue.push(other);
+        }
+      }
+    }
+
+    return Array.from(seenBodies);
+  }
+  function propagateCategory(category: number, bodies: Matter.Body[]) {
+    bodies.forEach(b => {
+      b.collisionFilter.category = category;
+    });
+  }
 
   useEffect(() => {
     socket.on('createChain', (data: { playerId: string, customId: string, pinAId: string, pinBId: string, stiffness: number, damping: number, length: number, currentLevel: number }) => {
@@ -157,17 +213,26 @@ const PhysicsCanvas: React.FC = () => {
       const chain = Matter.Constraint.create({
         bodyA: pinA,
         bodyB: pinB,
-        stiffness: data.stiffness,
-        damping: data.damping,
+        stiffness: 1,
+        damping: 0,
         length: data.length,
         render: {
           visible: true,
           lineWidth: 4,
           strokeStyle: '#8B0000',
         },
+        collideConnected: false,
         label: data.customId,
-      });
-  
+        });
+        const NO_COLLISION_GROUP = -Math.abs(Date.now()); 
+        // 핀들
+        pinA.collisionFilter.group = NO_COLLISION_GROUP;
+        pinB.collisionFilter.group = NO_COLLISION_GROUP;
+        // 핀이 박혀 있던 몸체들 (drawPin 때 parentBody 에 저장해 둔 값)
+        const parentA = (pinA as any).parentBody as Matter.Body | undefined;
+        const parentB = (pinB as any).parentBody as Matter.Body | undefined;
+        if (parentA) parentA.collisionFilter.group = NO_COLLISION_GROUP;
+        if (parentB) parentB.collisionFilter.group = NO_COLLISION_GROUP;
       // 3) Matter.World에 추가
       Matter.World.add(engineRef.current.world, chain);
     });
@@ -210,6 +275,7 @@ const PhysicsCanvas: React.FC = () => {
       socket.off('mouseMove');
     };
   }, []);
+  
 
 
   useEffect(() => {
@@ -232,6 +298,7 @@ const PhysicsCanvas: React.FC = () => {
         data.centerX, data.centerY,
         80, 80,
         {
+          density: data.currentLevel === 18 ? 1 : 0.001,
           render: {
             fillStyle: 'rgba(0,0,0,0)',
             strokeStyle: '#1d4ed8',
@@ -315,8 +382,8 @@ useEffect(() => {
       isStatic: true,      // 타겟과 동일하게
       collisionFilter: {
         group: data.groupNumber,
-        category: data.category,
-        mask: 0x0001,                     // 어떤 것도 충돌하지 않음
+        category: 0x0002,
+        mask: 0xFFFD,                     // 어떤 것도 충돌하지 않음
       },
       render: {
         fillStyle: 'rgba(0,0,0,0.0)',
@@ -326,7 +393,10 @@ useEffect(() => {
       label: data.customId,
       mass: 30,
     });
-    (nail as any).isUserPin = true;
+    (nail as any).parentBody = targetBody;
+
+    targetBody.collisionFilter.category = 0x0002;
+    targetBody.collisionFilter.mask     = 0xFFFD;
     // 월드에 추가 및 상태 업데이트
     Matter.Composite.add(engineRef.current.world, nail);
     addNail(nail);
@@ -346,8 +416,19 @@ useEffect(() => {
       collideConnected: false,
     });
     Matter.Composite.add(engineRef.current.world, constraint);
-  };
+// 3) 연결된 모든 body 수집 → nail과 targetBody 모두 시작점으로
+    const allConnected = new Set<Matter.Body>();
+    const world = engineRef.current.world;
+    collectConnectedBodies(nail, world)
+      .forEach(b => allConnected.add(b));
+    collectConnectedBodies(targetBody, world)
+      .forEach(b => allConnected.add(b));
 
+    // 4) 공통 category 결정 (targetBody 기준)
+    const commonCat = targetBody.collisionFilter.category ?? 0x0001;
+    // 5) 전파
+    propagateCategory(commonCat, Array.from(allConnected));
+  };
   socket.on('drawPin', handleDrawPin);
   return () => {
     socket.off('drawPin', handleDrawPin);
@@ -576,7 +657,16 @@ useEffect(() => {
         }
       });
     }
-
+if (currentLevel === 10) {
+    const hinge = Matter.Composite.allBodies(world).find(b => b.label === 'hingeBox');
+    const nail  = Matter.Composite.allBodies(world).find(b => b.label === 'nail');
+    if (hinge && nail) {
+       const key = hingeOrder[hingePosIndex];        // 'top'|'middle'|'bottom'
+       const newY = LEVEL10_HINGE_Y[key];             // 상수에서 꺼낸 Y 좌표
+        Matter.Body.setPosition(hinge, { x: hinge.position.x, y: newY });
+        Matter.Body.setPosition(nail,  { x: nail.position.x,  y: newY });
+      }
+    }
 
 
     // 공이 wall_bottom 아래로 떨어졌는지 확인
@@ -673,7 +763,20 @@ useEffect(() => {
       if (runnerRef.current) Matter.Runner.stop(runnerRef.current);
       Matter.World.clear(world, false);
       Matter.Engine.clear(engineRef.current);
-    }
+      if (currentLevel === 10) {
+     const hinge = Matter.Composite.allBodies(world).find(b => b.label === 'hingeBox');
+     const nail  = Matter.Composite.allBodies(world).find(b => b.label === 'nail');
+     if (hinge && nail) {
+       const key = hingeOrder[hingePosIndex];
+       const newY = LEVEL10_HINGE_Y[key];
+       Matter.Body.setPosition(hinge, { x: hinge.position.x, y: newY });
+       Matter.Body.setPosition(nail,  { x: nail.position.x,  y: newY });
+       // bounds도 즉시 갱신해 줍니다
+       Matter.Bounds.update(hinge.bounds, hinge.vertices, hinge.velocity);
+       Matter.Bounds.update(nail.bounds,  nail.vertices,  nail.velocity);
+     }
+   }
+  }
 
     // Matter.Runner.run(engineRef.current);
     // Matter.Render.run(render);
@@ -683,7 +786,7 @@ useEffect(() => {
     //   Matter.World.clear(world, false);
     //   Matter.Engine.clear(engineRef.current);
     // };
-  }, [currentLevel, resetTrigger]);
+  }, [currentLevel, resetTrigger, hingePosIndex]);
 
   // 헬퍼 함수: 클릭 좌표와 선분(Constraint의 끝점) 사이의 최단 거리를 계산
   const distancePointToLineSegment = (
@@ -1199,7 +1302,7 @@ const createPhysicsBody = (
       socket.emit('drawShape', {
         playerId: p1,
         customId,
-        currentLevel: 6,
+        currentLevel,
         collisionCategory: square.collisionFilter.category,
         groupNumber: square.collisionFilter.group,
         centerX: cx,
@@ -1532,6 +1635,49 @@ const createPhysicsBody = (
         </div>
         
         <div className="relative">
+          {currentLevel === 10 && (
+  <div className="absolute top-2 right-2 flex gap-2 z-20">
+    {/* 이전 힌지 위치 */}
+    <button
+      onClick={() => {
+        const newIndex = ((hingePosIndex + 2) % 3) as 0 | 1 | 2;
+        setHingePosIndex(newIndex);
+        setResetTrigger(t => !t);
+        socket.emit('changeHingePosition', {
+          level: currentLevel,
+          hingePosIndex: newIndex,
+          playerId: p2,
+        });
+        resetLevel();
+      }}
+      className="p-2 bg-gray-200 rounded hover:bg-gray-300"
+      aria-label="이전 힌지 위치"
+    >
+      <ChevronLeft size={24} />
+    </button>
+
+    {/* 다음 힌지 위치 */}
+    <button
+      onClick={() => {
+        const newIndex = ((hingePosIndex + 1) % 3) as 0 | 1 | 2;
+        setHingePosIndex(newIndex);
+        setResetTrigger(t => !t);
+        socket.emit('changeHingePosition', {
+          level: currentLevel,
+          hingePosIndex: newIndex,
+          playerId: p2,
+        });
+        resetLevel();
+      }}
+      className="p-2 bg-gray-200 rounded hover:bg-gray-300"
+      aria-label="다음 힌지 위치"
+    >
+      <ChevronRight size={24} />
+    </button>
+  </div>
+)}
+
+
           <canvas
             ref={canvasRef}
             width={800}
