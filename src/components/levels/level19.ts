@@ -8,8 +8,8 @@ export const createLevel19: LevelFactory = (world) => {
     isStatic: true,
     label: 'wall',
     collisionFilter: {
-    category: 0x0001,
-    mask: 0xFFFF,
+      category: 0x0001,
+      mask: 0xFFFF,
     },
   };
   const walls = [
@@ -45,21 +45,21 @@ export const createLevel19: LevelFactory = (world) => {
   );
 
   // 2) 공 생성 및 초기 위치 저장
-  const BallX = 270;
-  const BallY = 200 - 200 - 15 + 4;
+  const BallX = 180;
+  const BallY = 100;  // 필요에 따라 수정
   const ball = Matter.Bodies.circle(
     BallX,
     BallY,
     15,
     {
       label: 'ball',
-      frictionAir:  0.001,  
+      frictionAir: 0,
+      restitution: 0.8,    // 튕김 극대화
+      friction: 0,
       render: { fillStyle: '#ef4444' },
       collisionFilter: { category: 0x0001, mask: 0xFFFF },
     }
   );
-  // initialBallPositionRef.current = { x: BallX, y: BallY };
-  // ballRef.current = ball;
 
   // 3) 아래 왼쪽 박스 생성
   const leftBox = Matter.Bodies.rectangle(
@@ -94,20 +94,38 @@ export const createLevel19: LevelFactory = (world) => {
     }
   );
 
-  // 5) 월드에 바디 추가
-  Matter.World.add(world, [...walls,
+
+  // 6) 핀 위를 지나는 길쭉한 판자 생성 (길이 200, 두께 10, -45° 기울기)
+  const plank = Matter.Bodies.rectangle(
+  95, 420,   // 판자의 중심 위치
+    150, 10,    // width, height
+    {
+      isStatic: true,
+      angle: Math.PI / 4,    // -45도
+      label: 'plank_left_24',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 7) 월드에 모든 바디 추가
+  Matter.World.add(world, [
+    ...walls,
     rainbow,
     ball,
     leftBox,
     rightBox,
     star,
+    plank,
   ]);
 
-  return [...walls,
+  return [
+    ...walls,
     rainbow,
     ball,
     leftBox,
     rightBox,
     star,
+    plank,
   ];
 };

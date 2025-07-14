@@ -76,7 +76,7 @@ export const createLevel15: LevelFactory = (world) => {
   const lever = Matter.Bodies.rectangle(
     350, 520, 300, 20,
     {
-      label: 'lever_20',
+      label: 'lever',
       frictionAir:  0.001,  
       render: { fillStyle: '#6b7280' },
       collisionFilter: { group: -1, category: 0x0001, mask: 0xFFFF },

@@ -43,7 +43,9 @@ export const createLevel14: LevelFactory = (world) => {
     15,   // 반지름
     {
       label: 'ball',
-      frictionAir:  0.001,  
+      restitution: 0.95,
+      friction: 0,
+      frictionAir: 0,
       render: { fillStyle: '#ef4444' },
       collisionFilter: { category: 0x0001, mask: 0xFFFF },
     }
@@ -54,7 +56,7 @@ export const createLevel14: LevelFactory = (world) => {
   // 3) 상단 박스 생성
   const boxTop = Matter.Bodies.rectangle(
     400,  // 화면 중앙
-    200,  // Y: 위쪽 박스 위치
+    100,  // Y: 위쪽 박스 위치
     200,  // 너비
     20,   // 두께
     {
@@ -69,7 +71,7 @@ export const createLevel14: LevelFactory = (world) => {
   const boxBottom = Matter.Bodies.rectangle(
     400,  // 화면 중앙
     350,  // Y: 하단 박스 위치
-    200,
+    300,
     20,
     {
       isStatic: true,
@@ -94,9 +96,26 @@ export const createLevel14: LevelFactory = (world) => {
     }
   );
 
+
+    // --- 여기서 초승달 추가 ---
+    // 밝은 달 원
+    const moon = Matter.Bodies.circle(750, 50, 30, {
+      isStatic: true,
+      label: 'moon',
+      render: { fillStyle: '#fbbf24' },
+      collisionFilter: { category: 0x0001, mask: 0x0000 },
+    });
+    // 배경색 원으로 일부를 가려서 초승달 모양 연출
+    const moonMask = Matter.Bodies.circle(765, 40, 30, {
+      isStatic: true,
+      label: 'moon_mask',
+      render: { fillStyle: '#1e293b' },
+      collisionFilter: { category: 0x0001, mask: 0x0000 },
+    });
+
   // 6) 월드에 바디 추가
-  Matter.World.add(world, [...walls,diagonal, ball, boxTop, boxBottom, star]);
+  Matter.World.add(world, [...walls,diagonal, ball, boxTop, boxBottom, star, moon, moonMask]);
 
   // 반환 (Constraint 제외)
-  return [...walls,diagonal, ball, boxTop, boxBottom, star];
+  return [...walls,diagonal, ball, boxTop, boxBottom, star, moon, moonMask];
 };

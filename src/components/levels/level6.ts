@@ -74,8 +74,7 @@ export const createLevel6: LevelFactory = (world) => {
 
   // 9) 공 생성
   const ball = Matter.Bodies.circle(100, 300, 15, {
-    frictionAir:  0,
-    friction: 0,  
+    frictionAir:  0.001, 
     label: 'ball',
     render: { fillStyle: '#ef4444' },
     collisionFilter: { category: 0x0001, mask: 0xFFFF },

@@ -55,11 +55,11 @@ export const createLevel5: LevelFactory = (world) => {
 
   // 5) 힌지 달린 상자 + fulcrum + pivot
   const hingeBox = Matter.Bodies.rectangle(400, 155, 300, 35, {
-    label: 'hingeBox',
+    label: 'lever',
     render: { fillStyle: '#6b7280' },
     collisionFilter: { category: 0x0001, mask: 0xFFFF }
   });
-  const fulcrum = Matter.Bodies.circle(400, 380, 5, {
+  const fulcrum = Matter.Bodies.circle(370, 400, 5, {
     isStatic: true,
     label: 'fulcrum',
     render: { fillStyle: 'rgba(0,0,0,0)', strokeStyle: '#fbbf24', lineWidth: 1 },
