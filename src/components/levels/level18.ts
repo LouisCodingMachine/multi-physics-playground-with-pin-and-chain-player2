@@ -1,159 +1,121 @@
-// src/levels/level18.ts
+// src/levels/level19.ts
 import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
 export const createLevel18: LevelFactory = (world) => {
-  // ─── 0) 레버 및 바구니 설정 ───
-  const leverConfig = {
-    x: 205,
-    y: 320,
-    width: 400,
-    height: 20,
-    density: 0.0001,
-    friction: 0,
-    frictionStatic: 0,
-    restitution: 1,
-  };
-  const basketConfig = {
-    width: 80,
-    height: 10,
-    wallThickness: 10,
-    wallHeight: 20,
-    // 레버 왼쪽 끝에서 바구니 위치 오프셋
-    offsetX: -leverConfig.width / 2 + 40,
-    offsetY: leverConfig.height / 2 + -15,
-  };
 
-  // ─── 1) 바닥 ───
-  const floor = Matter.Bodies.rectangle(400, 610, 810, 20, {
+  // 기본 벽 옵션
+  const wallOptions = {
     isStatic: true,
-    label: 'wall_bottom',
-    render: { fillStyle: '#94a3b8' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF },
-  });
-
-  // ─── 2) 공 ───
-  const ball = Matter.Bodies.circle(50, 310, 15, {
-    label: 'ball',
-    restitution: 0.4,
-    frictionAir: 0.001,
-    friction: 0,
-    render: { fillStyle: '#ef4444' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF },
-  });
-
-  // ─── 3) 판자(plank) ───
-  const plank = Matter.Bodies.rectangle(
-    leverConfig.x,
-    leverConfig.y,
-    leverConfig.width,
-    leverConfig.height,
-    {
-      label: 'leverPlank',
-      density: leverConfig.density,
-      friction: leverConfig.friction,
-      frictionStatic: leverConfig.frictionStatic,
-      restitution: leverConfig.restitution,
-      render: { fillStyle: '#4B0082' },
-      collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFF & ~0x0002 },
-    }
-  );
-
-  // ─── 4) 바구니(basket) ───
-  const basketBaseX = leverConfig.x + basketConfig.offsetX;
-  const basketBaseY = leverConfig.y + basketConfig.offsetY;
-  const basketBase = Matter.Bodies.rectangle(
-    basketBaseX,
-    basketBaseY+20,
-    basketConfig.width,
-    basketConfig.height,
-    {
-      label: 'basketBase',
-      render: { fillStyle: '#4B5563' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-  const basketWallA = Matter.Bodies.rectangle(
-    basketBaseX - basketConfig.width / 2 + basketConfig.wallThickness / 2,
-    basketBaseY - basketConfig.wallHeight / 2,
-    basketConfig.wallThickness,
-    basketConfig.wallHeight+40,
-    {
-      label: 'basketWallA',
-      render: { fillStyle: '#4B5563' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-  const basketWallB = Matter.Bodies.rectangle(
-    basketBaseX + basketConfig.width / 2 - basketConfig.wallThickness / 2,
-    basketBaseY - basketConfig.wallHeight / 2,
-    basketConfig.wallThickness,
-    basketConfig.wallHeight+40,
-    {
-      label: 'basketWallB',
-      render: { fillStyle: '#4B5563' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  // ─── 5) 레버+바구니 복합체 ───
-  const lever = Matter.Body.create({
-    parts: [plank, basketBase, basketWallA, basketWallB],
-    label: 'lever',
-    render: { visible: true },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF },
-  });
-
-  // ─── 6) 축(fulcrum) & 힌지 ───
-  const hingeX = leverConfig.x;
-  const hingeY = leverConfig.y;
-  const fulcrum = Matter.Bodies.circle(hingeX, hingeY, 10, {
-    isStatic: true,
-    label: 'fulcrum',
-    render: {
-      fillStyle: 'rgba(0,0,0,0)',
-      strokeStyle: '#fbbf24',
-      lineWidth: 1,
+    label: 'wall',
+    collisionFilter: {
+    category: 0x0001,
+    mask: 0xFFFF,
     },
-    collisionFilter: { group: -1, category: 0x0002, mask: 0x0000 },
-  });
-  const localHinge = { x: hingeX - lever.position.x, y: hingeY - lever.position.y };
-  const pivot = Matter.Constraint.create({
-    bodyA: lever,
-    pointA: localHinge,
-    bodyB: fulcrum,
-    pointB: { x: 0, y: 0 },
-    length: 0,
-    stiffness: 1,
-    render: { visible: false },
-  });
-
-  // ─── 7) 기타 플랫폼 & 목표 ───
-  const rect1 = Matter.Bodies.rectangle(750, 320, 160, 20, { isStatic: true, label: 'rect1', render: { fillStyle: '#1e40af' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const rect2 = Matter.Bodies.rectangle(65, 400, 20, 20, { isStatic: true, label: 'rect2', render: { fillStyle: '#1e40af' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const rect3 = Matter.Bodies.rectangle(170, 260, 10, 20, { isStatic: true, label: 'rect3', render: { fillStyle: '#1e40af' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const star = Matter.Bodies.trapezoid(780, 300, 20, 20, 1, { isStatic: true, label: 'balloon', render: { fillStyle: '#fbbf24' }, collisionFilter: { category: 0x0001, mask: 0x0001 } });
-
-  // ─── 8) 움직이는 장애물 ───
-  const movingObs = Matter.Bodies.rectangle(600, 225, 80, 250, { isStatic: true, label: 'movingObstacleRight', render: { fillStyle: '#dc2626' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const movingObsLeft = Matter.Bodies.rectangle(500, 255, 80, 30, { isStatic: true, label: 'movingObstacleLeft', render: { fillStyle: '#dc2626' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-
-  // ─── 9) 월드에 추가 ───
-  Matter.World.add(world, [floor, ball, lever, fulcrum, pivot, rect1, rect2, rect3, star, movingObs, movingObsLeft]);
-
-  // ─── 10) 장애물 애니메이션 ───
-  let dir = 1;
-  const topY = 200, bottomY = 400, step = 2;
-  const mover = () => {
-    const nextY = movingObs.position.y + step * dir;
-    if (nextY > bottomY) dir = -1;
-    else if (nextY < topY) dir = 1;
-    const clampedY = Math.max(topY, Math.min(bottomY, movingObs.position.y + step * dir));
-    Matter.Body.setPosition(movingObs, { x: movingObs.position.x, y: clampedY });
-    Matter.Body.setPosition(movingObsLeft, { x: movingObsLeft.position.x, y: clampedY - 150 });
   };
-  setInterval(mover, 1000 / 30);
+  const walls = [
+    Matter.Bodies.rectangle(400, 610, 810, 20, { ...wallOptions, label: 'wall_bottom' }),
+  ];
+  walls.forEach((wall) => {
+    Matter.Body.setStatic(wall, true);
+    wall.render.fillStyle = '#94a3b8';
+  });
 
-  // ─── 11) 반환 ───
-  return [floor, ball, lever, fulcrum, pivot, rect1, rect2, rect3, star, movingObs, movingObsLeft];
+  // 1) 기울어진 대각선 플랫폼 생성 (왼쪽 상단에서 아래쪽으로)
+  const diagonal = Matter.Bodies.rectangle(
+    100,          // X: 화면 왼쪽
+    100,          // Y: 화면 상단
+    100,          // 길이
+    20,           // 두께
+    {
+      isStatic: true,
+      label: 'diagonal_19',
+      angle: Math.PI / 6, // 30도 기울기 (왼쪽이 위, 오른쪽이 아래)
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 2) 공 생성 및 초기 위치 설정
+  const ball = Matter.Bodies.circle(
+    100,  // X: 플랫폼과 동일
+    80,   // Y: 플랫폼보다 약간 위
+    15,   // 반지름
+    {
+      label: 'ball',
+      restitution: 0.95,
+      friction: 0,
+      frictionAir: 0,
+      render: { fillStyle: '#ef4444' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+  // initialBallPositionRef.current = { x: 100, y: 80 };
+  // ballRef.current = ball;
+
+  // 3) 상단 박스 생성
+  const boxTop = Matter.Bodies.rectangle(
+    400,  // 화면 중앙
+    100,  // Y: 위쪽 박스 위치
+    200,  // 너비
+    20,   // 두께
+    {
+      isStatic: true,
+      label: 'box_top_19',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 4) 하단 박스 생성
+  const boxBottom = Matter.Bodies.rectangle(
+    400,  // 화면 중앙
+    350,  // Y: 하단 박스 위치
+    300,
+    20,
+    {
+      isStatic: true,
+      label: 'box_bottom_19',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 5) 별 생성 (두 박스 사이 오른쪽)
+  const star = Matter.Bodies.trapezoid(
+    600,              // 화면 오른쪽
+    (200 + 350) / 2,  // Y: 중간 지점 = 275
+    20,               // 너비
+    20,               // 높이
+    1,                // 비율
+    {
+      isStatic: true,
+      label: 'balloon',
+      render: { fillStyle: '#fbbf24' },
+      collisionFilter: { category: 0x0001, mask: 0x0001 },
+    }
+  );
+
+
+    // --- 여기서 초승달 추가 ---
+    // 밝은 달 원
+    const moon = Matter.Bodies.circle(750, 50, 30, {
+      isStatic: true,
+      label: 'moon',
+      render: { fillStyle: '#fbbf24' },
+      collisionFilter: { category: 0x0001, mask: 0x0000 },
+    });
+    // 배경색 원으로 일부를 가려서 초승달 모양 연출
+    const moonMask = Matter.Bodies.circle(765, 40, 30, {
+      isStatic: true,
+      label: 'moon_mask',
+      render: { fillStyle: '#1e293b' },
+      collisionFilter: { category: 0x0001, mask: 0x0000 },
+    });
+
+  // 6) 월드에 바디 추가
+  Matter.World.add(world, [...walls,diagonal, ball, boxTop, boxBottom, star, moon, moonMask]);
+
+  // 반환 (Constraint 제외)
+  return [...walls,diagonal, ball, boxTop, boxBottom, star, moon, moonMask];
 };

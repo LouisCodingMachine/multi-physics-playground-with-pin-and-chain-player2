@@ -1,4 +1,4 @@
-// src/levels/level20.ts
+// src/levels/level22.ts
 import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
@@ -20,99 +20,116 @@ export const createLevel15: LevelFactory = (world) => {
     wall.render.fillStyle = '#94a3b8';
   });
 
-  // 1) 왼쪽에 세로로 긴 땅 (벽처럼)
-  const leftWall = Matter.Bodies.rectangle(
-    50, 500, 300, 400,
+  // 1) 위쪽에 오른쪽 아래로 기울어진 대각선 플랫폼
+  const diagTop = Matter.Bodies.rectangle(
+    450,   // X 위치
+    100,   // Y 위치
+    300,   // 길이
+    20,    // 두께
     {
       isStatic: true,
-      label: 'vertical_ground_20',
+      label: 'diagTop_22',
+      angle: (3 * Math.PI) / 25,  // 기울기
       render: { fillStyle: '#6b7280' },
       collisionFilter: { category: 0x0001, mask: 0xFFFF },
     }
   );
 
-  // 2) 그 옆의 큰 땅 (수평 플랫폼)
-  const ground = Matter.Bodies.rectangle(
-    350, 600, 600, 120,
-    {
-      isStatic: true,
-      label: 'ground_20',
-      render: { fillStyle: '#6b7280' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  // 3) 작은 사각형 축 (fulcrum base)
-  const fulcrumBase = Matter.Bodies.rectangle(
-    350, 530, 10, 70,
-    {
-      isStatic: true,
-      label: 'fulcrum_base_20',
-      render: { fillStyle: '#6b7280' },
-      collisionFilter: {
-        group: -1,
-        category: 0x0001,
-        mask: 0xFFFF,
-      },
-    }
-  );
-
-  // 4) 힌지 원 (pivotCircle)
-  const pivotCircle = Matter.Bodies.circle(
-    350, 490, 5,
-    {
-      isStatic: true,
-      label: 'pivot_circle_20',
-      render: { fillStyle: '#fbbf24', strokeStyle: '#fbbf24', lineWidth: 1 },
-      collisionFilter: {
-        group: -1,
-        category: 0x0001,
-        mask: 0xFFFF,
-      },
-    }
-  );
-
-  // 5) 시소 판자 (lever)
-  const lever = Matter.Bodies.rectangle(
-    350, 520, 300, 20,
-    {
-      label: 'lever',
-      frictionAir:  0.001,  
-      render: { fillStyle: '#6b7280' },
-      collisionFilter: { group: -1, category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  const hingeConstraint = Matter.Constraint.create({
-    bodyA: lever,
-    pointA: { x: 0, y: 0 },
-    bodyB: pivotCircle,
-    pointB: { x: 0, y: 0 },
-    length: 0,
-    stiffness: 1,
-    damping: 0,
-    render: { visible: false },
-  });
-
-  // 6) 공 생성 (시소 위)
-  const ballY = 490 - 10 - 15; // pivot y - lever half-height - ball radius
+  // 2) 공 생성 및 초기 위치 저장
+  const BallX = 350;
+  const BallY = 50;
   const ball = Matter.Bodies.circle(
-    230, ballY, 15,
+    BallX,
+    BallY,
+    15,
     {
       label: 'ball',
-      restitution: 0.3,
-      friction: 0.05,
-      frictionAir: 0.01,
+      frictionAir:  0.001,  
       render: { fillStyle: '#ef4444' },
       collisionFilter: { category: 0x0001, mask: 0xFFFF },
     }
   );
-  // initialBallPositionRef.current = { x: 230, y: ballY };
+  // initialBallPositionRef.current = { x: BallX, y: BallY };
   // ballRef.current = ball;
 
-  // 7) 오른쪽 끝에 별 생성
+  // 3) 아래쪽에 동일한 기울기의 대각선 플랫폼
+  const diagBottom = Matter.Bodies.rectangle(
+    600,
+    250,
+    350,
+    20,
+    {
+      isStatic: true,
+      label: 'diagBottom_22',
+      angle: (-3 * Math.PI) / 25,
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 4) 위쪽 플랫폼 끝 지점 근처에 짧은 가로 박스
+  const shortH1 = Matter.Bodies.rectangle(
+    300,  
+    400,  
+    150,  
+    30,   
+    {
+      isStatic: true,
+      label: 'shortH1_22',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 5) 가로박스 옆에 세로 박스
+  const shortV = Matter.Bodies.rectangle(
+    100,
+    380,
+    30,
+    150,
+    {
+      isStatic: true,
+      label: 'shortV_22',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 6) 세로박스 아래에 짧은 가로 박스
+  const shortH2 = Matter.Bodies.rectangle(
+    200,
+    570,
+    150,
+    30,
+    {
+      isStatic: true,
+      label: 'shortH2_22',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 7) 오른쪽 하단에 짧은 가로 박스
+  const bottomH = Matter.Bodies.rectangle(
+    750,
+    550,
+    100,
+    20,
+    {
+      isStatic: true,
+      label: 'bottomH_22',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 8) bottomH 위에 별 생성
   const star = Matter.Bodies.trapezoid(
-    600, 530, 20, 20, 1,
+    750,
+    525,
+    20,
+    20,
+    1,
     {
       isStatic: true,
       label: 'balloon',
@@ -123,24 +140,14 @@ export const createLevel15: LevelFactory = (world) => {
 
   // 월드에 바디 추가
   Matter.World.add(world, [...walls,
-    leftWall,
-    ground,
-    fulcrumBase,
-    pivotCircle,
-    lever,
-    hingeConstraint,
-    ball,
-    star,
+    diagTop, ball, diagBottom,
+    shortH1, shortV, shortH2,
+    bottomH, star,
   ]);
 
-  // 반환
   return [...walls,
-    leftWall,
-    ground,
-    fulcrumBase,
-    pivotCircle,
-    lever,
-    ball,
-    star,
+    diagTop, ball, diagBottom,
+    shortH1, shortV, shortH2,
+    bottomH, star,
   ];
 };

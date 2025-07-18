@@ -1,9 +1,8 @@
-// src/levels/level18.ts
+// src/levels/level13.ts
 import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
 export const createLevel13: LevelFactory = (world) => {
-
   // 기본 벽 옵션
   const wallOptions = {
     isStatic: true,
@@ -21,54 +20,51 @@ export const createLevel13: LevelFactory = (world) => {
     wall.render.fillStyle = '#94a3b8';
   });
 
-  // 1) 왼쪽 위에 떠 있는 공 생성
-  const ball = Matter.Bodies.circle(
-    100,   // X: 왼쪽
-    100,   // Y: 위쪽
-    15,    // 반지름
-    {
-      label: 'ball',
-      frictionAir:  0.001,  
-      render: { fillStyle: '#ef4444' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-  // 초기 위치 저장 (리스폰용)
-  // initialBallPositionRef.current = { x: 100, y: 100 };
-  // ballRef.current = ball;
+  // 1) 왼쪽 및 오른쪽 박스 생성
+  const leftBox = Matter.Bodies.rectangle(60, 100, 80, 30, {
+    isStatic: true,
+    label: 'left_box',
+    render: { fillStyle: '#10b981' },
+    collisionFilter: { category: 0x0002, mask: 0xFFFD },
+  });
+  const rightBox = Matter.Bodies.rectangle(700, 500, 80, 30, {
+    isStatic: true,
+    label: 'right_box',
+    render: { fillStyle: '#10b981' },
+    collisionFilter: { category: 0x0002, mask: 0xFFFD },
+  });
 
-  // 2) 오른쪽 아래 땅 생성
-  const ground = Matter.Bodies.rectangle(
-    650,   // X: 오른쪽
-    580,   // Y: 아래
-    150,   // 너비
-    150,   // 두께
-    {
-      isStatic: true,
-      label: 'ground_18',
-      render: { fillStyle: '#6b7280' },
-      collisionFilter: { category: 0x0002, mask: 0xFFFD },
-    }
-  );
+  // 2) 공 생성 (왼쪽 박스 위)
+  const ball = Matter.Bodies.circle(60, 80, 15, {
+    label: 'ball',
+    frictionAir:  0.001,  
+    render: { fillStyle: '#ef4444' },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
+  });
 
-  // 3) 땅 위에 별 생성
-  const star = Matter.Bodies.trapezoid(
-    650,   // X: 땅과 동일
-    500,   // Y: 땅 바로 위
-    20,    // 너비
-    20,    // 높이
-    1,     // 비율
-    {
-      isStatic: true,
-      label: 'balloon',
-      render: { fillStyle: '#fbbf24' },
-      collisionFilter: { category: 0x0001, mask: 0x0001 },
-    }
-  );
+  // 3) 목표(별) 생성 (오른쪽 박스 위)
+  const star = Matter.Bodies.trapezoid(700, 475, 20, 20, 1, {
+    isStatic: true,
+    label: 'balloon',
+    render: { fillStyle: '#fbbf24' },
+    collisionFilter: { category: 0x0001, mask: 0x0001 },
+  });
 
   // 월드에 바디 추가
-  Matter.World.add(world, [...walls,ball, ground, star]);
+  Matter.World.add(world, [
+    ...walls,
+    leftBox,
+    rightBox,
+    ball,
+    star,
+  ]);
 
   // 반환
-  return [...walls,ball, ground, star];
+  return [
+    ...walls,
+    leftBox,
+    rightBox,
+    ball,
+    star,
+  ];
 };

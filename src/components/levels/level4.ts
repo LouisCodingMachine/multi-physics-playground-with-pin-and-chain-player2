@@ -1,135 +1,106 @@
-// src/levels/level5.ts
+// src/levels/level18.ts
 import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
-// 전역으로 사용 중인 socket을 가져옵니다
-import { socket } from '../../socket';
-
 export const createLevel4: LevelFactory = (world) => {
-  // 1) 바닥 벽 생성
-  const wallOptions: Matter.IBodyDefinition = {
+
+  // 기본 벽 옵션
+  const wallOptions = {
     isStatic: true,
     label: 'wall',
     collisionFilter: {
-      group: -1,
-      category: 0x0001,
-      mask: 0xFFFF,
+    category: 0x0001,
+    mask: 0xFFFF,
     },
-    render: { fillStyle: '#94a3b8' },
   };
   const walls = [
     Matter.Bodies.rectangle(400, 610, 810, 20, { ...wallOptions, label: 'wall_bottom' }),
   ];
-
-  // 2) 못(Nail) 생성 및 등록
-  const radius = 10;
-  const nailPositions = [
-    { x: 475, y: 240, id: 'nail4_0' },
-    { x: 475, y: 280, id: 'nail4_1' },
-    { x: 475, y: 310, id: 'nail4_2' },
-  ];
-  const nails = nailPositions.map(({ x, y, id }) => {
-    const nail = Matter.Bodies.circle(x, y, radius, {
-      isStatic: id === 'nail4_0',              // 첫 번째 못만 고정
-      label: id,
-      collisionFilter: {
-        group: -1,
-        category: 0x0002,                     // Nail 카테고리
-        mask: 0xFFFF & ~0x0002, // 같은 카테고리끼리 충돌하지 않도록 설정
-      },
-      render: {
-        fillStyle: 'rgba(0,0,0,0)',
-        strokeStyle: '#fbbf24',
-        lineWidth: 3,
-      },
-      mass: 30,
-    });
-
-    
-
-    // pin 등록 콜백 호출
-    socket.emit('registerPin', {
-      centerX: x,
-      centerY: y,
-      radius,
-      playerId: 'player2',
-      customId: id,
-      currentLevel: 5,
-    });
-    // addNail(nail4_0);
-
-    return nail;
+  walls.forEach((wall) => {
+    Matter.Body.setStatic(wall, true);
+    wall.render.fillStyle = '#94a3b8';
   });
 
-  // 3) 공 및 장애물 생성
-  const ball = Matter.Bodies.circle(400, 442, 15, {
-    render: { fillStyle: '#ef4444' },
-    label: 'ball',
-    frictionAir:  0.001,  
-    collisionFilter: { category: 0x0001, mask: 0xFFFF },
-  });
-  const obstacle = Matter.Bodies.rectangle(400, 150, 100, 150, {
-    isStatic: true,
-    label: 'obstacle',
-    render: { fillStyle: '#6b7280' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF },
-  });
+  // 1) 왼쪽 위에 떠 있는 공 생성
+  const ball = Matter.Bodies.circle(
+    100,   // X: 왼쪽
+    100,   // Y: 위쪽
+    15,    // 반지름
+    {
+      label: 'ball',
+      frictionAir:  0,  
+      render: { fillStyle: '#ef4444' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      friction: 1,
+    }
+  );
+  // 초기 위치 저장 (리스폰용)
+  // initialBallPositionRef.current = { x: 100, y: 100 };
+  // ballRef.current = ball;
 
-  // 4) 스쿱(Scoop) 생성
-  const handle = Matter.Bodies.rectangle(475, 240, 50, 420, {
-    label: 'handle',
-    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFD},
-    render: { fillStyle: '#10b981' },
-  });
-  const head1 = Matter.Bodies.rectangle(425, 475, 150, 50, {
-    label: 'head1',
-    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFD},
-    render: { fillStyle: '#10b981' },
-  });
-  const head2 = Matter.Bodies.rectangle(325, 450, 50, 100, {
-    label: 'head2',
-    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFD},
-    render: { fillStyle: '#10b981' },
-  });
-  const scoop = Matter.Body.create({
-    parts: [handle, head1, head2],
-    isStatic: false,
-    label: 'scoop',
-    collisionFilter: { group: -1, category: 0x0002, mask: 0xFFFD},
-  });
-
-  // 5) 별(Star) 생성
-  const star = Matter.Bodies.trapezoid(300, 335, 20, 20, 1, {
-    render: { fillStyle: '#fbbf24' },
-    label: 'balloon',
-    isStatic: true,
-    collisionFilter: { category: 0x0001, mask: 0x0001 },
-  });
-
-  // 6) 제약조건(Constraints) 생성: 스쿱 ↔ 못
-  const constraints = nailPositions.map(({ x, y }, i) =>
-    Matter.Constraint.create({
-      bodyA: scoop,
-      pointA: { x: x - scoop.position.x, y: y - scoop.position.y },
-      bodyB: nails[i],
-      pointB: { x: 0, y: 0 },
-      stiffness: 1,
-      length: 0,
-      render: { visible: false },
-    })
+  // 1) 기울어진 대각선 플랫폼 생성 (왼쪽 상단에서 아래쪽으로)
+  const diagonal = Matter.Bodies.rectangle(
+    150,          // X: 화면 왼쪽
+    300,          // Y: 화면 상단
+    500,          // 길이
+    20,           // 두께
+    {
+      isStatic: true,
+      label: 'diagonal_19',
+      angle: Math.PI / 3, // 30도 기울기 (왼쪽이 위, 오른쪽이 아래)
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      friction: 1,
+    }
   );
 
-  // 7) 월드에 모두 추가
-  Matter.World.add(world, [
-    ...walls,
-    ball,
-    obstacle,
-    scoop,
-    star,
-    ...nails,
-    ...constraints,
-  ]);
+  // 2) 오른쪽 아래 땅 생성
+  const ground = Matter.Bodies.rectangle(
+    450,   // X: 오른쪽
+    580,   // Y: 아래
+    380,   // 너비
+    150,   // 두께
+    {
+      isStatic: true,
+      label: 'ground_18',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      friction: 1,
+    }
+  );
 
-  // 8) 반환 (제약조건 제외)
-  return [...walls, ball, obstacle, scoop, ...nails, star];
+  const ground2 = Matter.Bodies.rectangle(
+    780,   // X: 오른쪽
+    580,   // Y: 아래
+    100,   // 너비
+    150,   // 두께
+    {
+      isStatic: true,
+      label: 'ground_18',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      friction: 0,
+    }
+  );
+
+  // 3) 땅 위에 별 생성
+  const star = Matter.Bodies.trapezoid(
+    780,   // X: 땅과 동일
+    495,   // Y: 땅 바로 위
+    20,    // 너비
+    20,    // 높이
+    1,     // 비율
+    {
+      isStatic: true,
+      label: 'balloon',
+      render: { fillStyle: '#fbbf24' },
+      collisionFilter: { category: 0x0001, mask: 0x0001 },
+    }
+  );
+
+  // 월드에 바디 추가
+  Matter.World.add(world, [...walls, ball, ground, ground2, diagonal, star]);
+
+  // 반환
+  return [...walls,ball, ground, ground2, diagonal, star];
 };

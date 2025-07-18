@@ -1,8 +1,9 @@
-// src/levels/level21.ts
+// src/levels/level18.ts
 import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
 export const createLevel16: LevelFactory = (world) => {
+
   // 기본 벽 옵션
   const wallOptions = {
     isStatic: true,
@@ -20,26 +21,11 @@ export const createLevel16: LevelFactory = (world) => {
     wall.render.fillStyle = '#94a3b8';
   });
 
-  // 1) 왼쪽에 세로로 긴 직사각형 (탑 형태)
-  const leftTower = Matter.Bodies.rectangle(
-    80,   // X: 화면 왼쪽
-    400,  // Y: 중간 높이
-    80,   // 너비
-    400,  // 높이
-    {
-      isStatic: true,
-      label: 'leftTower_21',
-      render: { fillStyle: '#6b7280' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  // 2) 왼쪽 타워 맨 위에 공 얹기
-  const ballStartY = 200 - 15; // 타워 topY(200) - 공 반지름
+  // 1) 왼쪽 위에 떠 있는 공 생성
   const ball = Matter.Bodies.circle(
-    80,
-    ballStartY,
-    15,
+    100,   // X: 왼쪽
+    100,   // Y: 위쪽
+    15,    // 반지름
     {
       label: 'ball',
       frictionAir:  0.001,  
@@ -47,59 +33,31 @@ export const createLevel16: LevelFactory = (world) => {
       collisionFilter: { category: 0x0001, mask: 0xFFFF },
     }
   );
-  // initialBallPositionRef.current = { x: 80, y: ballStartY };
+  // 초기 위치 저장 (리스폰용)
+  // initialBallPositionRef.current = { x: 100, y: 100 };
   // ballRef.current = ball;
 
-  // 3) 중앙에 공중에 떠 있는 박스
-  const floatingBox = Matter.Bodies.rectangle(
-    500,  // 화면 중앙
-    200,  // Y: 위쪽 위치
-    200,  // 너비
-    100,  // 높이
+  // 2) 오른쪽 아래 땅 생성
+  const ground = Matter.Bodies.rectangle(
+    650,   // X: 오른쪽
+    580,   // Y: 아래
+    150,   // 너비
+    150,   // 두께
     {
       isStatic: true,
-      label: 'floatingBox_21',
+      label: 'ground_18',
       render: { fillStyle: '#6b7280' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      collisionFilter: { category: 0x0002, mask: 0xFFFD },
     }
   );
 
-  // 4) 오른쪽 아래로 기울어진 대각선 플랫폼
-  const diagonal = Matter.Bodies.rectangle(
-    632,           // X: 오른쪽
-    381,           // Y: 아래쪽 중간
-    200,           // 길이
-    20,            // 두께
-    {
-      isStatic: true,
-      label: 'diagonal_21',
-      angle: -Math.PI / 6, // -30도 (오른쪽 아래가 높음)
-      render: { fillStyle: '#6b7280' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  // 5) 추가 공중 박스
-  const floatingBox2 = Matter.Bodies.rectangle(
-    764,
-    332,
-    100,
-    20,
-    {
-      isStatic: true,
-      label: 'floatingBox2',
-      render: { fillStyle: '#6b7280' },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    }
-  );
-
-  // 6) 오른쪽 위 별 생성
+  // 3) 땅 위에 별 생성
   const star = Matter.Bodies.trapezoid(
-    764,
-    315,
-    20,
-    20,
-    1,
+    650,   // X: 땅과 동일
+    500,   // Y: 땅 바로 위
+    20,    // 너비
+    20,    // 높이
+    1,     // 비율
     {
       isStatic: true,
       label: 'balloon',
@@ -109,22 +67,8 @@ export const createLevel16: LevelFactory = (world) => {
   );
 
   // 월드에 바디 추가
-  Matter.World.add(world, [...walls,
-    leftTower,
-    ball,
-    floatingBox,
-    diagonal,
-    floatingBox2,
-    star,
-  ]);
+  Matter.World.add(world, [...walls,ball, ground, star]);
 
   // 반환
-  return [...walls,
-    leftTower,
-    ball,
-    floatingBox,
-    diagonal,
-    floatingBox2,
-    star,
-  ];
+  return [...walls,ball, ground, star];
 };

@@ -1,121 +1,121 @@
-// src/levels/level12.ts
+// src/levels/level18.ts
 import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
 export const createLevel5: LevelFactory = (world) => {
-  const wallOptions: Matter.IBodyDefinition = {
+
+  // 기본 벽 옵션
+  const wallOptions = {
+    isStatic: true,
+    label: 'wall',
+    collisionFilter: {
+    category: 0x0001,
+    mask: 0xFFFF,
+    },
+  };
+  const walls = [
+    Matter.Bodies.rectangle(400, 610, 810, 20, { ...wallOptions, label: 'wall_bottom' }),
+  ];
+  walls.forEach((wall) => {
+    Matter.Body.setStatic(wall, true);
+    wall.render.fillStyle = '#94a3b8';
+  });
+
+  // 1) 왼쪽 위에 떠 있는 공 생성
+  const ball = Matter.Bodies.circle(
+    120,   // X: 왼쪽
+    10,   // Y: 위쪽
+    15,    // 반지름
+    {
+      label: 'ball',
+      frictionAir:  0,  
+      render: { fillStyle: '#ef4444' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      friction: 0,
+    }
+  );
+  // 초기 위치 저장 (리스폰용)
+  // initialBallPositionRef.current = { x: 100, y: 100 };
+  // ballRef.current = ball;
+
+  // 1) 기울어진 대각선 플랫폼 생성 (왼쪽 상단에서 아래쪽으로)
+  const diagonal = Matter.Bodies.rectangle(
+    150,          // X: 화면 왼쪽
+    150,          // Y: 화면 상단
+    250,          // 길이
+    20,           // 두께
+    {
       isStatic: true,
-      label: 'wall',
-      collisionFilter: {
-        group: -1,
-        category: 0x0001,
-        mask: 0xFFFF,
-      },
-      render: { fillStyle: '#94a3b8' },
-    };
-    const walls = [
-      Matter.Bodies.rectangle(400, 610, 810, 20, { ...wallOptions, label: 'wall_bottom' }),
-    ];
-  // 1) 왼쪽 박스 두 개 (첫 번째가 더 높음)
-  const leftHigh = Matter.Bodies.rectangle(35, 500, 80, 200, { 
-    isStatic: true,
-    label: 'leftHigh',
-    render: { fillStyle: '#10b981' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF }
-  });
-  const leftLow = Matter.Bodies.rectangle(115, 520, 80, 160, { 
-    isStatic: true,
-    label: 'leftLow',
-    render: { fillStyle: '#10b981' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF }
-  });
+      label: 'diagonal_19',
+      angle: Math.PI / 3, // 30도 기울기 (왼쪽이 위, 오른쪽이 아래)
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      friction: 0,
+    }
+  );
 
-  // 2) 공: 첫 번째 박스 위에
-  const ball = Matter.Bodies.circle(40, 410, 15, {
-    label: 'ball',
-    frictionAir:  0.001,   
-    render: { fillStyle: '#ef4444' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF }
-  });
+  // 2) 오른쪽 아래 땅 생성
+  const ground = Matter.Bodies.rectangle(
+    390,   // X: 오른쪽
+    290,   // Y: 아래
+    380,   // 너비
+    75,   // 두께
+    {
+      isStatic: true,
+      label: 'ground_18',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      friction: 0,
+    }
+  );
 
-  // 3) 권총 모양 박스
-  const gunBoxTall = Matter.Bodies.rectangle(750, 420, 100, 400, {
-    isStatic: true,
-    label: 'gunBox2',
-    render: { fillStyle: '#6b7280' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF }
-  });
-  const gunBoxWide = Matter.Bodies.rectangle(750, 220, 510, 100, {
-    isStatic: true,
-    label: 'gunBox',
-    render: { fillStyle: '#6b7280' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF }
-  });
-  const gunBoxSmall = Matter.Bodies.rectangle(490, 250, 20, 20, {
-    isStatic: true,
-    label: 'gunBox3',
-    render: { fillStyle: '#6b7280' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF }
-  });
+  const ground2 = Matter.Bodies.rectangle(
+    700,   // X: 오른쪽
+    290,   // Y: 아래
+    100,   // 너비
+    75,   // 두께
+    {
+      isStatic: true,
+      label: 'ground_18',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      friction: 0,
+    }
+  );
 
-  // 4) 권총 아래 땅 역할 박스
-  const groundUnderGun = Matter.Bodies.rectangle(650, 530, 320, 200, {
-    isStatic: true,
-    label: 'groundUnderGun',
-    render: { fillStyle: '#10b981' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF }
-  });
+  // 3) 땅 위에 별 생성
+  const star = Matter.Bodies.trapezoid(
+    700,   // X: 땅과 동일
+    245,   // Y: 땅 바로 위
+    20,    // 너비
+    20,    // 높이
+    1,     // 비율
+    {
+      isStatic: true,
+      label: 'balloon',
+      render: { fillStyle: '#fbbf24' },
+      collisionFilter: { category: 0x0001, mask: 0x0001 },
+    }
+  );
 
-  // 5) 힌지 달린 상자 + fulcrum + pivot
-  const hingeBox = Matter.Bodies.rectangle(400, 155, 300, 35, {
-    label: 'lever',
-    render: { fillStyle: '#6b7280' },
-    collisionFilter: { category: 0x0002, mask: 0xFFFF }
-  });
-  const fulcrum = Matter.Bodies.circle(370, 400, 5, {
-    isStatic: true,
-    label: 'fulcrum',
-    render: { fillStyle: 'rgba(0,0,0,0)', strokeStyle: '#fbbf24', lineWidth: 1 },
-    collisionFilter: { group: -1, category: 0x0001, mask: 0x0001 }
-  });
-  const pivot = Matter.Constraint.create({
-    bodyA: hingeBox,
-    pointA: { x: 140, y: 0 },
-    bodyB: fulcrum,
-    pointB: { x: 0, y: 0 },
-    length: 0,
-    stiffness: 0.5,
-  // damping:   0.5,
-    render: { visible: false }
-  });
-
-  // 6) 숨겨진 별
-  const star = Matter.Bodies.trapezoid(670, 423, 20, 20, 1, {
-    isStatic: true,
-    label: 'balloon',
-    render: { fillStyle: '#fbbf24' },
-    collisionFilter: { category: 0x0001, mask: 0x0001 }
-  });
+  const obstacle = Matter.Bodies.rectangle(
+    500,
+    50,
+    30,
+    50,
+    {
+      isStatic: false,
+      label: 'obstacle',
+      render: { fillStyle: '#009900' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+      frictionAir: 0.15,
+      density: 0.01
+    }
+  )
 
   // 월드에 바디 추가
-  Matter.World.add(world, [
-    ...walls,
-    leftHigh, leftLow,
-    ball,
-    gunBoxTall, gunBoxWide, gunBoxSmall,
-    groundUnderGun,
-    hingeBox, fulcrum, pivot,
-    star
-  ]);
+  Matter.World.add(world, [...walls, ball, ground, ground2, diagonal, obstacle, star]);
 
   // 반환
-  return [
-    ...walls,
-    leftHigh, leftLow,
-    ball,
-    gunBoxTall, gunBoxWide, gunBoxSmall,
-    groundUnderGun,
-    hingeBox, fulcrum, pivot,
-    star
-  ];
+  return [...walls,ball, ground, ground2, diagonal, obstacle, star];
 };

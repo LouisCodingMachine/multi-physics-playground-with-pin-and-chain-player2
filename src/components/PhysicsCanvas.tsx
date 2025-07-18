@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Matter, { Engine } from 'matter-js';
-import { Eraser, Pen, Pin, ChevronLeft, ChevronRight, RefreshCw, Hand, Circle, Link } from 'lucide-react';
+import { Eraser, Pen, Pin, ChevronLeft, ChevronRight, RefreshCw, Hand, Circle, Link, X } from 'lucide-react';
 import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
 import { levelFactories } from './levels';
-import { LEVEL10_HINGE_Y } from './levels/level10';
+import { LEVEL11_HINGE_Y } from './levels/level11';
+import { levelTitles } from './levels/levelInfo';
+import { map_constraints } from './levels/map_constraints';
 // import Timer from './Timer';
 
 interface LogInfo {
@@ -22,7 +24,7 @@ declare module 'matter-js' {
   // IConstraintDefinition 에 collideConnected 옵션을 추가
   interface IConstraintDefinition {
     /**
-     * If true, the two bodies connected by this constraint will still
+     * If true, the two bodies conneㅇted by this constraint will still
      * collide with each other (default is false).
      */
     collideConnected?: boolean;
@@ -108,7 +110,7 @@ const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({ isPlayerOne }) => {
     nailsRef.current = []; // 참조값 초기화
     setNails([]); // 상태도 초기화
   };
-  
+
   
   useEffect(() => {
     if(gameEnded) {
@@ -223,17 +225,16 @@ useEffect(() => {
         },
         collideConnected: false,
         label: data.customId,
-        });
-        const NO_COLLISION_GROUP = -Math.abs(Date.now()); 
-        // 핀들
-        pinA.collisionFilter.group = NO_COLLISION_GROUP;
-        pinB.collisionFilter.group = NO_COLLISION_GROUP;
-        // 핀이 박혀 있던 몸체들 (drawPin 때 parentBody 에 저장해 둔 값)
-        const parentA = (pinA as any).parentBody as Matter.Body | undefined;
-        const parentB = (pinB as any).parentBody as Matter.Body | undefined;
-        if (parentA) parentA.collisionFilter.group = NO_COLLISION_GROUP;
-        if (parentB) parentB.collisionFilter.group = NO_COLLISION_GROUP;
-      // 3) Matter.World에 추가
+      });
+      const NO_COLLISION_GROUP = -Math.abs(Date.now()); 
+      // 핀들
+      pinA.collisionFilter.group = NO_COLLISION_GROUP;
+      pinB.collisionFilter.group = NO_COLLISION_GROUP;
+      // 핀이 박혀 있던 몸체들 (drawPin 때 parentBody 에 저장해 둔 값)
+      const parentA = (pinA as any).parentBody as Matter.Body | undefined;
+      const parentB = (pinB as any).parentBody as Matter.Body | undefined;
+      if (parentA) parentA.collisionFilter.group = NO_COLLISION_GROUP;
+      if (parentB) parentB.collisionFilter.group = NO_COLLISION_GROUP;
       Matter.World.add(engineRef.current.world, chain);
     });
   
@@ -290,15 +291,16 @@ useEffect(() => {
     centerY?: number;
     // 기존 points (다각형용)
     points: Matter.Vector[];
+    ensity: number;
   }) => {
     if (data.playerId === p1) return
     // ─── Level 6 전용: centerX/Y 로 사각형 그리기 ───
-    if ((data.currentLevel === 6 || data.currentLevel === 18) && data.centerX != null && data.centerY != null) {
+    if ((data.currentLevel === 8 || data.currentLevel === 9 || data.currentLevel === 10 || data.currentLevel === 20) && data.centerX != null && data.centerY != null) {
       const square = Matter.Bodies.rectangle(
         data.centerX, data.centerY,
         80, 80,
         {
-          density: data.currentLevel === 18 ? 1 : 0.001,
+          density: data.currentLevel === 20 ? 1 : data.density,
           render: {
             fillStyle: 'rgba(0,0,0,0)',
             strokeStyle: '#1d4ed8',
@@ -314,8 +316,8 @@ useEffect(() => {
           label: data.customId,
         }
       );
+      
       Matter.World.add(engineRef.current.world, square);
-      return;
     }
     // ────────────────────────────────────────────────
 
@@ -328,6 +330,7 @@ useEffect(() => {
       data.customId
     ) as { body: Matter.Body; nailsInShape: Matter.Body[] } | null;
     if (result && result.body) {
+      
       Matter.World.add(engineRef.current.world, result.body);
       // nailsInShape 제약조건 처리 등…
       result.nailsInShape.forEach(nail => {
@@ -341,6 +344,7 @@ useEffect(() => {
           render: { visible: false },
           collideConnected: false,
         });
+        
         Matter.World.add(engineRef.current.world, ct);
       });
     }
@@ -377,9 +381,19 @@ useEffect(() => {
       return;
     }
 
+    if (currentLevelRef.current === 10 && targetBody.label === 'lever') {
+      data.radius = 10;
+    }
+
+    if (currentLevelRef.current === 12 && targetBody.label === 'Tshape') {
+      data.radius = 10;
+      data.centerX = targetBody.position.x;
+    }
+
+    // 250717 error 확인 필요
     // 2) 못 생성 (물리 충돌 모두 끔)
-    const nail = Matter.Bodies.circle(data.centerX, data.centerY, data.radius, {
-      isStatic: true,      // 타겟과 동일하게
+    let nail = Matter.Bodies.circle(data.centerX, data.centerY, data.radius, {
+      isStatic: targetBody.isStatic,      // 타겟과 동일하게
       collisionFilter: {
         group: data.groupNumber,
         category: 0x0002,
@@ -398,7 +412,66 @@ useEffect(() => {
     targetBody.collisionFilter.category = 0x0002;
     targetBody.collisionFilter.mask     = 0xFFFD;
     // 월드에 추가 및 상태 업데이트
-    Matter.Composite.add(engineRef.current.world, nail);
+    if(currentLevelRef.current === 10 && targetBody.label === 'lever') {
+      
+      nail.label += '_fulcrum';
+      nail.isStatic = true; // 레버의 축 역할을 하기 때문에 정적이어야 함
+      Matter.Composite.add(engineRef.current.world, nail);
+
+      const lever = bodies.find(body => body.label === 'lever')
+
+      // 8) 힌지 연결
+      if(lever) {
+        const pivot = Matter.Constraint.create({
+          bodyA: lever,
+          pointA: { x: nail.position.x - lever.position.x, y: nail.position.y-lever.position.y },
+          bodyB: nail,
+          pointB: { x: 0, y: 0 },
+          length: 0,
+          stiffness: 1,
+          render: { visible: true },
+        });
+        Matter.Composite.add(engineRef.current.world, pivot);
+      }
+
+      const fulcrum = bodies.find(body => body.label === 'fulcrum' || body.label.includes('fulcrum'));
+      const constraints = Matter.Composite.allConstraints(engineRef.current.world);
+      const leverPivot = constraints.find(ct => ct.label === 'leverPivot');
+      if(fulcrum && leverPivot) {
+        Matter.Composite.remove(engineRef.current.world, fulcrum);
+        Matter.Composite.remove(engineRef.current.world, leverPivot);
+      }
+    } else if(currentLevelRef.current === 12 && targetBody.label === 'Tshape') {
+      nail.label += '_Tshape';
+      nail.isStatic = true; // tshape의 축 역할을 하기 때문에 정적이어야 함
+      Matter.Composite.add(engineRef.current.world, nail);
+
+      const Tshape = bodies.find(body => body.label === 'Tshape')
+
+      // 8) 힌지 연결
+      if(Tshape) {
+        const pivot = Matter.Constraint.create({
+          bodyA: Tshape,
+          pointA: { x: nail.position.x - Tshape.position.x, y: nail.position.y-Tshape.position.y },
+          bodyB: nail,
+          pointB: { x: 0, y: 0 },
+          length: 0,
+          stiffness: 1,
+          render: { visible: true },
+        });
+        Matter.Composite.add(engineRef.current.world, pivot);
+      }
+
+      const nailTshape = bodies.find(body => body.label === 'nail_Tshape' || body.label.includes('_Tshape'));
+      const constraints = Matter.Composite.allConstraints(engineRef.current.world);
+      const constraintTshape = constraints.find(ct => ct.label === 'constraint_Tshape');
+      if(nailTshape && constraintTshape) {
+        Matter.Composite.remove(engineRef.current.world, nailTshape);
+        Matter.Composite.remove(engineRef.current.world, constraintTshape);
+      }
+    } else {
+      Matter.Composite.add(engineRef.current.world, nail);
+    }
     addNail(nail);
 
     // 3) Constraint로 고정
@@ -414,6 +487,7 @@ useEffect(() => {
       stiffness: 1,
       render: { visible: false },
       collideConnected: false,
+      label: currentLevelRef.current === 10 && targetBody.label === 'lever' ? 'leverPivot' : currentLevelRef.current === 18 && targetBody.label === 'Tshape' ? 'constraint_Tshape' : '',
     });
     Matter.Composite.add(engineRef.current.world, constraint);
 // 3) 연결된 모든 body 수집 → nail과 targetBody 모두 시작점으로
@@ -435,28 +509,26 @@ useEffect(() => {
   };
 }, [socket]);
 
-
-
   useEffect(() => {
     socket.on('resetLevel', (data: { level: number }) => {
       console.log(`Resetting level to: ${data.level}`);
       
-      // 월드와 렌더를 정지하고 지운 후, 다시 설정
-      const world = engineRef.current.world;
-      Matter.World.clear(world, false);
-      Matter.Engine.clear(engineRef.current);
-  
-      if (renderRef.current) {
-        Matter.Render.stop(renderRef.current);
-        Matter.Render.run(renderRef.current);
-      }
+              // 월드와 렌더를 정지하고 지운 후, 다시 설정
+        const world = engineRef.current.world;
+        Matter.World.clear(world, false);
+        Matter.Engine.clear(engineRef.current);
+    
+        if (renderRef.current) {
+          Matter.Render.stop(renderRef.current);
+          Matter.Render.run(renderRef.current);
+        }
 
-      resetNails();
-  
-      // 수신한 레벨로 초기화
-      setCurrentLevel(data.level);
-      currentLevelRef.current = data.level //
-      setResetTrigger((prev) => !prev);
+        resetNails();
+    
+        // 수신한 레벨로 초기화
+        setCurrentLevel(data.level);
+        currentLevelRef.current = data.level //
+        setResetTrigger((prev) => !prev);
     });
   
     return () => {
@@ -505,8 +577,10 @@ useEffect(() => {
 
   useEffect(() => {
     socket.on('push', (data: { force: { x: number; y: number }; playerId: string }) => {
+      console.log("safdsdf");
       if (ballRef.current && !pushLock) {
         const ball = ballRef.current;
+        console.log("data.force: ", data.force);
         Matter.Body.applyForce(ball, ball.position, data.force);
         
         // setPushLock(true);
@@ -586,207 +660,172 @@ useEffect(() => {
   }, [cursors]);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+  if (!canvasRef.current) return;
 
-    // 렌더링 객체 초기화
-    if (renderRef.current) {
-      Matter.Render.stop(renderRef.current); // 이전 렌더 중지
-      // renderRef.current.canvas.remove(); // 기존 캔버스 해제
-      renderRef.current = null;
-      console.log("렌더링 객체 초기화 완료")
+  // 렌더링 초기화
+  if (renderRef.current) {
+    Matter.Render.stop(renderRef.current);
+    renderRef.current = null;
+  }
+  const bgColor = (currentLevel === 17 || currentLevel === 18) ? '#1e293b' : '#f8f4e3';
+  const render = Matter.Render.create({
+    canvas: canvasRef.current,
+    engine: engineRef.current,
+    options: { width: 800, height: 600, wireframes: false, background: bgColor },
+  });
+  renderRef.current = render;
+  engineRef.current.world.gravity.y = (currentLevel === 11) ? 0.7 : currentLevel == 4 ? 1: 0.3;
+  if(currentLevelRef.current === 5 || currentLevelRef.current === 6) {
+      engineRef.current.world.gravity.y = 1;
     }
-    
-    const bgColor = (currentLevel === 7 || currentLevel === 14)
-    ? '#1e293b'   // 어두운 그레이–블루 계열
-    : '#f8f4e3';  // 기존 밝은 배경
+  Matter.Render.run(render);
 
-    const render = Matter.Render.create({
-      canvas: canvasRef.current,
-      engine: engineRef.current,
-      options: {
-        width: 800,
-        height: 600,
-        // hasBounds: true,
-        // showCollisions: true,
-        wireframes: false,
-        background: bgColor,
-      },
+  // 러너 초기화
+  if (runnerRef.current) {
+    Matter.Runner.stop(runnerRef.current);
+    runnerRef.current = null;
+  }
+  const runner = Matter.Runner.create({ delta: 25, isFixed: true });
+  Matter.Runner.run(runner, engineRef.current);
+  runnerRef.current = runner;
+
+  // 월드 초기화 & 레벨 빌드
+  const world = engineRef.current.world;
+  Matter.World.clear(world, false);
+  const factory = levelFactories[currentLevel];
+  if (factory) {
+    const bodies = factory(world);
+    bodies.forEach(body => {
+      if (body.label.startsWith('nail')) addNail(body);
+      if (body.label === 'ball') {
+        ballRef.current = body;
+        initialBallPositionRef.current = { x: body.position.x, y: body.position.y };
+      }
     });
-    console.log("Render.create 완료")
-    renderRef.current = render;
-
-    engineRef.current.world.gravity.y = (currentLevel === 10) ? 0.7 : 0.3;
-
-    // 기존 러너가 있으면 중지
-    if (runnerRef.current) {
-      Matter.Runner.stop(runnerRef.current);
-      runnerRef.current = null;
-      console.log("기존 러너 중지 완료")
-    }
-
-    // 새로운 러너 생성 및 실행
-    const runner = Matter.Runner.create({
-      delta: 25,
-      isFixed: true, // 고정된 시간 간격 유지
-    });
-    Matter.Runner.run(runner, engineRef.current);
-    runnerRef.current = runner;
-
-    Matter.Render.run(render);
-
-    // 월드 및 레벨 초기화
-    const world = engineRef.current.world;
-    
-    Matter.World.clear(world, false);
-    
-    // in your world-init useEffect
-    const factory = levelFactories[currentLevel];
-    if (factory) {
-      const bodies = factory(world);   // ← returns all the bodies you just made
-      bodies.forEach(body => {
-        if (body.label.startsWith('nail')) {
-          addNail(body);               // ← now your nailsRef will contain them
-        }
-        if (body.label === 'ball') {
-          ballRef.current = body;      // ← and you’ll need this too for push/afterUpdate!
-          
-          initialBallPositionRef.current = {
-            x: body.position.x,
-            y: body.position.y
-          };
-        }
-      });
-    }
-if (currentLevel === 10) {
-    const hinge = Matter.Composite.allBodies(world).find(b => b.label === 'hingeBox');
-    const nail  = Matter.Composite.allBodies(world).find(b => b.label === 'nail');
-    if (hinge && nail) {
-       const key = hingeOrder[hingePosIndex];        // 'top'|'middle'|'bottom'
-       const newY = LEVEL10_HINGE_Y[key];             // 상수에서 꺼낸 Y 좌표
+    if (currentLevel === 11) {
+      const hinge = Matter.Composite.allBodies(world).find(b => b.label === 'hingeBox');
+      const nail  = Matter.Composite.allBodies(world).find(b => b.label === 'nail');
+      if (hinge && nail) {
+        const key = hingeOrder[hingePosIndex];
+        const newY = LEVEL11_HINGE_Y[key];
         Matter.Body.setPosition(hinge, { x: hinge.position.x, y: newY });
         Matter.Body.setPosition(nail,  { x: nail.position.x,  y: newY });
       }
     }
+  }
 
+  // collisionStart 핸들러
+  const handleCollisionStart = (event: Matter.IEventCollision<Engine>) => {
+    event.pairs.forEach(pair => {
+      const a = pair.bodyA.label;
+      const b = pair.bodyB.label;
 
-    // 공이 wall_bottom 아래로 떨어졌는지 확인
-    const handleCollisionStart = (event: Matter.IEventCollision<Engine>) => {
-      console.log('collisionStart event:', event);
-      
-      // event.pairs가 있는지 확인
-      if (!event.pairs) return;
+      // 레벨 클리어
+      if ((a === 'ball' && b === 'balloon') || (a === 'balloon' && b === 'ball')) {
+        setGameEnded(true);
 
-      event.pairs.forEach((pair) => {
-        if (
-          (pair.bodyA.label === 'ball' && pair.bodyB.label === 'balloon') ||
-          (pair.bodyA.label === 'balloon' && pair.bodyB.label === 'ball')
-        ) {
-          setGameEnded(true);
-        }
-      });
-    }
+      // 장애물과 충돌 시 레벨별 1초 뒤 리셋
+      } else if ((a === 'ball' && b === 'obstacle') || (a === 'obstacle' && b === 'ball')) {
+        const scheduledLvl = currentLevelRef.current;
+        setTimeout(() => {
+          // 사용자가 이미 다른 레벨로 이동했으면 무시
+          if (currentLevelRef.current !== scheduledLvl) return;
+          if (scheduledLvl === 5 || scheduledLvl === 6) {
+            resetLevel();
+          }
+        }, 1000);
+      }
+    });
+  };
 
-    const handleAfterUpdate = () => {
-  const world = engineRef.current.world;
-  const canvasHeight = canvasRef.current!.height;
-  const threshold = 40;
+  // afterUpdate 핸들러 (원래 로직 유지)
+  const handleAfterUpdate = () => {
+    const world = engineRef.current.world;
+    const canvasHeight = canvasRef.current!.height;
+    const threshold = 40;
 
-  if (currentLevelRef.current === 10 && ballRef.current) {
-      const wallBottom = Matter.Composite
-        .allBodies(world)
-        .find(b => b.label === 'wall_bottom');
+    // 레벨 11 특수 처리
+    if (currentLevelRef.current === 11 && ballRef.current) {
+      const wallBottom = Matter.Composite.allBodies(world).find(b => b.label === 'wall_bottom');
       if (wallBottom && ballRef.current.position.y > wallBottom.bounds.max.y - threshold) {
         resetLevel();
       }
       return;
     }
-    
-  // ── Stage 6 전용: square_* 만 땅에 닿으면 즉시 제거 ──
-  if (currentLevelRef.current === 6) {
-    Matter.Composite.allBodies(world).forEach(body => {
-      if (
-        body.label.startsWith('square_') &&
-        body.position.y > canvasHeight - threshold
-      ) {
-        Matter.World.remove(world, body);
-      }
-    });
-    return;
-  }
 
-  // ── 그 외 레벨: 기존 공 리셋 + opacity 감소 로직 ──
+    // Stage 6~10: square_* 제거
+    if ([8, 9, 10].includes(currentLevelRef.current)) {
+      Matter.Composite.allBodies(world).forEach(body => {
+        if (body.label.startsWith('square_') && body.position.y > canvasHeight - threshold) {
+          Matter.World.remove(world, body);
+        }
+      });
+    }
 
-  // 1) 공이 wall_bottom 아래로 떨어지면 리셋
-  const wallBottom = Matter.Composite
-    .allBodies(world)
-    .find(b => b.label === 'wall_bottom');
-  if (ballRef.current && wallBottom) {
-    if (ballRef.current.position.y > wallBottom.bounds.max.y - threshold) {
+    // 기본: 공이 바닥 아래로 떨어지면 위치 리셋
+    const wallBottom = Matter.Composite.allBodies(world).find(b => b.label === 'wall_bottom');
+    if (ballRef.current && wallBottom && ballRef.current.position.y > wallBottom.bounds.max.y - threshold) {
       Matter.Body.setPosition(ballRef.current, initialBallPositionRef.current);
       Matter.Body.setVelocity(ballRef.current, { x: 0, y: 0 });
       Matter.Body.setAngularVelocity(ballRef.current, 0);
-      Matter.Body.applyForce(ballRef.current, ballRef.current.position, { x: 0, y: 0 });
     }
-  }
 
-  // 2) 사용자 그린 객체 opacity 감소 후 제거
-  Matter.Composite.allBodies(world).forEach(body => {
-    if (!staticObjects.includes(body.label) && !body.isStatic && wallBottom) {
-      const touching = Matter.SAT.collides(body, wallBottom)?.collided;
-      if (touching) {
-        body.render.opacity = body.render.opacity ?? 1;
-        body.render.opacity -= 0.01;
-        if (body.render.opacity <= 0 && !body.eraserEmitted) {
-          body.eraserEmitted = true;
-          socket.emit('erase', {
-            customId: body.label,
-            playerId: p1,
-            currentLevel: currentLevelRef.current,
-            isFall: true,
-          });
+    // 사용자 드로잉 오브젝트 투명도 감소
+    Matter.Composite.allBodies(world).forEach(body => {
+      if (!staticObjects.includes(body.label) && !body.isStatic && wallBottom) {
+        const touching = Matter.SAT.collides(body, wallBottom)?.collided;
+        if (touching) {
+          body.render.opacity = (body.render.opacity ?? 1) - 0.01;
+          if (body.render.opacity! <= 0 && !body.eraserEmitted) {
+            body.eraserEmitted = true;
+            socket.emit('erase', {
+              customId: body.label,
+              playerId: p1,
+              currentLevel: currentLevelRef.current,
+              isFall: true,
+            });
+          }
         }
       }
-    }
-  });
-};
+    });
+  };
 
-    
-    Matter.Events.on(engineRef.current, 'collisionStart', handleCollisionStart);
-    Matter.Events.on(engineRef.current, 'afterUpdate', handleAfterUpdate);
+  // 이벤트 등록
+  Matter.Events.on(engineRef.current, 'collisionStart', handleCollisionStart);
+  Matter.Events.on(engineRef.current, 'afterUpdate', handleAfterUpdate);
 
-    // 정리 함수
-    return () => {
-      Matter.Events.off(engineRef.current, 'collisionStart', handleCollisionStart);
-      Matter.Events.off(engineRef.current, 'afterUpdate', handleAfterUpdate);
+  // 정리
+  return () => {
+    Matter.Events.off(engineRef.current, 'collisionStart', handleCollisionStart);
+    Matter.Events.off(engineRef.current, 'afterUpdate', handleAfterUpdate);
+    if (renderRef.current) Matter.Render.stop(renderRef.current);
+    Matter.World.clear(world, false);
+    Matter.Engine.clear(engineRef.current);
+  };
+}, [currentLevel, resetTrigger, hingePosIndex]);
 
-      if (renderRef.current) Matter.Render.stop(renderRef.current);
-      if (runnerRef.current) Matter.Runner.stop(runnerRef.current);
-      Matter.World.clear(world, false);
-      Matter.Engine.clear(engineRef.current);
-      if (currentLevel === 10) {
-     const hinge = Matter.Composite.allBodies(world).find(b => b.label === 'hingeBox');
-     const nail  = Matter.Composite.allBodies(world).find(b => b.label === 'nail');
-     if (hinge && nail) {
-       const key = hingeOrder[hingePosIndex];
-       const newY = LEVEL10_HINGE_Y[key];
-       Matter.Body.setPosition(hinge, { x: hinge.position.x, y: newY });
-       Matter.Body.setPosition(nail,  { x: nail.position.x,  y: newY });
-       // bounds도 즉시 갱신해 줍니다
-       Matter.Bounds.update(hinge.bounds, hinge.vertices, hinge.velocity);
-       Matter.Bounds.update(nail.bounds,  nail.vertices,  nail.velocity);
-     }
-   }
+// 레벨 변경 시, 현재 툴이 금지된 툴이라면 허용된 툴로 리셋
+useEffect(() => {
+  const allowed: Array<'pen' | 'eraser' | 'pin' | 'push'> = [];
+
+  // pen, eraser 는 4,5,6,12 레벨에서 금지
+  if (![4, 5, 6, 12].includes(currentLevel)) {
+    allowed.push('pen', 'eraser');
+  }
+  // pin 은 4~9,11 레벨에서 금지
+  if (![4, 5, 6, 7, 8, 9, 11].includes(currentLevel)) {
+    allowed.push('pin');
+  }
+  // push 는 7~10 레벨에서 금지
+  if (![7, 8, 9, 10].includes(currentLevel)) {
+    allowed.push('push');
   }
 
-    // Matter.Runner.run(engineRef.current);
-    // Matter.Render.run(render);
-
-    // return () => {
-    //   Matter.Render.stop(render);
-    //   Matter.World.clear(world, false);
-    //   Matter.Engine.clear(engineRef.current);
-    // };
-  }, [currentLevel, resetTrigger, hingePosIndex]);
+  // 현재 툴이 허용 리스트에 없으면, 첫 번째 허용 툴로 변경
+  if (!allowed.includes(tool)) {
+    setTool(allowed[0]!);
+  }
+}, [currentLevel]);
 
   // 헬퍼 함수: 클릭 좌표와 선분(Constraint의 끝점) 사이의 최단 거리를 계산
   const distancePointToLineSegment = (
@@ -851,7 +890,7 @@ const createPhysicsBody = (
   customId?: string
 ) => {
   // ── Stage 6: 무조건 80×80 사각형만 ──
-  if (currentLevelRef.current === 6) {
+  if (currentLevelRef.current === 8 || currentLevelRef.current === 9 || currentLevelRef.current === 10) {
     // drawPoints 가 비어 있으면 캔버스 중앙
     const cx = points.length
       ? points.reduce((sum, p) => sum + p.x, 0) / points.length
@@ -960,7 +999,7 @@ const createPhysicsBody = (
   );
   
 
-    if (currentLevelRef.current === 10 && nailsInShape.length > 0) {
+    if (currentLevelRef.current === 11 && nailsInShape.length > 0) {
     const nail = nailsInShape[0];
 
     body.collisionFilter = {
@@ -988,13 +1027,16 @@ const createPhysicsBody = (
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (tool === 'pin' && currentLevel === 10) {
-    // 핀 툴 모드인데 스테이지10이면 그냥 무시
-    return;
-  }
-    if (!canvasRef.current) return;
+    if (tool === 'pin' && currentLevel === 11) {
+      // 핀 툴 모드인데 스테이지10이면 그냥 무시
+      return;
+    }
+
+    let rect;
     
-    const rect = canvasRef.current.getBoundingClientRect();
+      if(!canvasRef.current) return;
+      rect = canvasRef.current.getBoundingClientRect();
+
     const point = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
@@ -1055,7 +1097,6 @@ const createPhysicsBody = (
       }
       return;
     }
-
 
     if (tool === 'eraser') {
       if (currentTurn === p2) return;
@@ -1147,10 +1188,10 @@ const createPhysicsBody = (
       // 공의 중심에서 클릭한 위치까지의 거리 계산
       const clickOffsetX = point.x - ballX;
 
-      const force = clickOffsetX < 0 ? { x: 0.008, y: 0 } : { x: -0.008, y: 0 };
-
-      // 공에 힘을 가함
-      // Matter.Body.applyForce(ball, ball.position, force);
+      let force = clickOffsetX < 0 ? { x: 0.008, y: 0 } : { x: -0.008, y: 0 };
+      if(currentLevelRef.current === 12) {
+        force = clickOffsetX < 0 ? { x: 0.04911, y: 0 } : { x: -0.04911, y: 0 };
+      }
 
       // 서버에 힘 적용 요청 전송
       socket.emit('push', {
@@ -1167,13 +1208,16 @@ const createPhysicsBody = (
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
+    let rect;
+    
+      if(!canvasRef.current) return;
+      rect = canvasRef.current.getBoundingClientRect();
   
-    const rect = canvasRef.current.getBoundingClientRect();
     let point = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     };
+    console.log("point: ", point);
 
     // 서버로 마우스 위치 전송
     socket.emit('mouseMove', { x: point.x, y: point.y, playerId: p1 });
@@ -1187,7 +1231,7 @@ const createPhysicsBody = (
     };
   
     // 벽과의 충돌 감지
-    const bodies = Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point);
+    const bodies = currentLevelRef.current === 5 ? Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point) : currentLevelRef.current === 6 ? Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point) : Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point)
     const collidedWall = bodies.find(body => body.label === 'wall');
     // console.log("collidedWall: ", collidedWall)
   
@@ -1278,7 +1322,7 @@ const createPhysicsBody = (
   // ── 2) 펜 툴 전용 처리 ──
   if (tool === 'pen' && currentTurn === p1) {
     // Level 6/18 전용: 80×80 사각형만
-    if (currentLevel === 6 || currentLevel === 18) {
+    if (currentLevel === 8 || currentLevel === 20 || currentLevelRef.current === 9 || currentLevelRef.current === 10) {
       const cx = drawPoints.length
         ? drawPoints.reduce((sum, p) => sum + p.x, 0) / drawPoints.length
         : canvasRef.current!.width / 2;
@@ -1288,7 +1332,7 @@ const createPhysicsBody = (
       const customId = `square_${Date.now()}`;
 
       const square = Matter.Bodies.rectangle(cx, cy, 80, 80, {
-        density: currentLevel === 18 ? 1 : 0.001,
+        density: currentLevel === 20 ? 1 : 0.001,
         render: {
           fillStyle: 'rgba(0,0,0,0)',
           strokeStyle: '#1d4ed8',
@@ -1307,6 +1351,7 @@ const createPhysicsBody = (
         groupNumber: square.collisionFilter.group,
         centerX: cx,
         centerY: cy,
+        density: square.density,
       });
       socket.emit('changeTurn', { nextPlayerId: p2, currentLevel });
 
@@ -1367,7 +1412,7 @@ const createPhysicsBody = (
 
 
   const handleToolChange = (newTool: 'pen' | 'eraser' | 'pin' | 'chain' | 'push') => {
-    if (currentLevel === 10 && newTool === 'pin') {
+    if (currentLevel === 11 && newTool === 'pin') {
     return; // 스테이지 10에선 pin 선택 불가
   }
     if (currentTurn === p2) return;
@@ -1449,6 +1494,8 @@ const createPhysicsBody = (
     // 서버로 초기화 이벤트 전송
     socket.emit('resetLevel', { playerId: p1, level: currentLevel });
   };
+
+
 
   // 누적해서 csv 파일 업데이트
   const saveLog = async (logInfo: LogInfo) => {
@@ -1563,40 +1610,83 @@ const createPhysicsBody = (
           {/* <div>
             <button onClick={handleButtonClick}>Show Cursors Length</button>
           </div> */}
-          <button onClick={handleShowBodies}>Show All Bodies</button>
+          {/* <button onClick={handleShowBodies}>Show All Bodies</button>*/
           <button
             onClick={() => resetLevel()}
             className={`p-2 rounded 'bg-gray-200'`}
           >
             <RefreshCw size={24} />
-          </button>
+          </button> }
           <button
             onClick={() => handleToolChange('pen')}
-            className={`p-2 rounded ${
-              tool === 'pen' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-            }`}
+            className={`relative p-2 rounded 
+              ${tool === 'pen' ? 'bg-blue-500 text-white' : 'bg-gray-200'}
+              ${(currentLevel === 4 || currentLevel === 5 || currentLevel === 6 || currentLevel === 12) ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
           >
+            {(currentLevel === 4 || currentLevel === 5 || currentLevel === 6 || currentLevel === 12) && (
+              <X
+                size={48}
+                className="absolute inset-0 m-auto text-red-500 pointer-events-none"
+              />
+            )}
             <Pen size={24} />
           </button>
           <button
             onClick={() => handleToolChange('eraser')}
-            className={`p-2 rounded ${
-              tool === 'eraser' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-            }`}
+            className={`relative p-2 rounded 
+              ${tool === 'eraser' ? 'bg-blue-500 text-white' : 'bg-gray-200'}
+              ${(currentLevel === 4 || currentLevel === 5 || currentLevel === 6 || currentLevel === 12) ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
           >
             <Eraser size={24} />
+            {(currentLevel === 4 || currentLevel === 5 || currentLevel === 6 || currentLevel === 12) && (
+    <X size={48} className="absolute inset-0 m-auto text-red-500 pointer-events-none" />
+  )}
           </button>
           <button
             onClick={() => handleToolChange('pin')}
-            disabled={currentLevel === 10}
+            disabled={
+              currentLevel === 11 ||
+              currentLevel === 4  ||
+              currentLevel === 5  ||
+              currentLevel === 6  ||
+              currentLevel === 7  ||
+              currentLevel === 8  ||
+              currentLevel === 9
+            }
             className={`
+              relative
               p-2 rounded
               ${tool === 'pin' ? 'bg-blue-500 text-white' : 'bg-gray-200'}
-              ${currentLevel === 10 ? 'opacity-50 cursor-not-allowed' : ''}
+              ${(
+                currentLevel === 11 ||
+                currentLevel === 4  ||
+                currentLevel === 5  ||
+                currentLevel === 6  ||
+                currentLevel === 7  ||
+                currentLevel === 8  ||
+                currentLevel === 9
+              ) ? 'opacity-50 cursor-not-allowed' : ''}
             `}
           >
+            {(
+              currentLevel === 11 ||
+              currentLevel === 4  ||
+              currentLevel === 5  ||
+              currentLevel === 6  ||
+              currentLevel === 7  ||
+              currentLevel === 8  ||
+              currentLevel === 9
+            ) && (
+              <X
+                size={48}
+                className="absolute inset-0 m-auto text-red-500 pointer-events-none"
+              />
+            )}
             <Pin size={24} />
           </button>
+
           {/* <button
             onClick={() => handleToolChange('chain')}
             className={`p-2 rounded ${
@@ -1606,9 +1696,19 @@ const createPhysicsBody = (
             <Link size={24} />
           </button> */}
           {/* 밀기 도구 버튼 */}
+          {(currentLevel === 11 || currentLevel === 4 || currentLevel === 5 || currentLevel === 6 || currentLevel === 7 || currentLevel === 8 || currentLevel === 9) && (
+            <X
+              size={48}
+              className="absolute inset-0 m-auto text-red-500 pointer-events-none"
+            />
+          )}
           <button
             onClick={() => handleToolChange('push')}
-            className={`p-2 rounded relative ${tool === 'push' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            className={`relative
+              p-2 rounded
+              ${tool === 'push' ? 'bg-blue-500 text-white' : 'bg-gray-200'}
+              ${(currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10)? 'opacity-50 cursor-not-allowed' : ''}
+            `}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1621,7 +1721,61 @@ const createPhysicsBody = (
             <Circle size={20} style={{ position: 'absolute', left: '6px', zIndex: 1 }} />
             {/* 손이 약간 겹치도록 배치 */}
             <Hand size={22} style={{ position: 'relative', left: '8px', zIndex: 2, transform: 'rotate(-20deg)' }} />
+            {(currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10) && (
+                <X
+                  size={48}
+                  className="absolute inset-0 m-auto text-red-500 pointer-events-none"
+                />
+              )}
           </button>
+          {currentLevelRef.current === 11 && (
+    <>
+      <button
+        onClick={() => {
+          const newIndex = ((hingePosIndex + 2) % 3) as 0 | 1 | 2;
+          setHingePosIndex(newIndex);
+          setResetTrigger(t => !t);
+          socket.emit('changeHingePosition', {
+            level: currentLevel,
+            hingePosIndex: newIndex,
+            playerId: p2,
+          });
+          resetLevel();
+        }}
+        className="p-2 rounded bg-gray-200 hover:bg-gray-300"
+        aria-label="이전 힌지 위치"
+      >
+        <ChevronLeft size={24} />
+      </button>
+      <button
+        onClick={() => {
+          const newIndex = ((hingePosIndex + 1) % 3) as 0 | 1 | 2;
+          setHingePosIndex(newIndex);
+          setResetTrigger(t => !t);
+          socket.emit('changeHingePosition', {
+            level: currentLevel,
+            hingePosIndex: newIndex,
+            playerId: p2,
+          });
+          resetLevel();
+        }}
+        className="p-2 rounded bg-gray-200 hover:bg-gray-300"
+        aria-label="다음 힌지 위치"
+      >
+        <ChevronRight size={24} />
+      </button>
+    </>
+  )}
+
+          {currentLevelRef.current === 9 && (
+            <button
+              onClick={resetLevel}
+              className="relative p-2 rounded bg-gray-200"
+            >
+              지렛대<br/>
+              중심 재설정
+            </button>
+            )}
         </div>
 
         <div className="flex items-center justify-between gap-4">
@@ -1635,61 +1789,36 @@ const createPhysicsBody = (
         </div>
         
         <div className="relative">
-          {currentLevel === 10 && (
-  <div className="absolute top-2 right-2 flex gap-2 z-20">
-    {/* 이전 힌지 위치 */}
-    <button
-      onClick={() => {
-        const newIndex = ((hingePosIndex + 2) % 3) as 0 | 1 | 2;
-        setHingePosIndex(newIndex);
-        setResetTrigger(t => !t);
-        socket.emit('changeHingePosition', {
-          level: currentLevel,
-          hingePosIndex: newIndex,
-          playerId: p2,
-        });
-        resetLevel();
-      }}
-      className="p-2 bg-gray-200 rounded hover:bg-gray-300"
-      aria-label="이전 힌지 위치"
-    >
-      <ChevronLeft size={24} />
-    </button>
-
-    {/* 다음 힌지 위치 */}
-    <button
-      onClick={() => {
-        const newIndex = ((hingePosIndex + 1) % 3) as 0 | 1 | 2;
-        setHingePosIndex(newIndex);
-        setResetTrigger(t => !t);
-        socket.emit('changeHingePosition', {
-          level: currentLevel,
-          hingePosIndex: newIndex,
-          playerId: p2,
-        });
-        resetLevel();
-      }}
-      className="p-2 bg-gray-200 rounded hover:bg-gray-300"
-      aria-label="다음 힌지 위치"
-    >
-      <ChevronRight size={24} />
-    </button>
-  </div>
-)}
-
-
-          <canvas
-            ref={canvasRef}
-            width={800}
-            height={600}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            className="border border-gray-300 rounded-lg shadow-lg"
-            style={{ cursor: tool === 'eraser' ? 'crosshair' : 'default' }}
-          />
           
+
+
+          
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={600}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              className="border border-gray-300 rounded-lg shadow-lg"
+              style={{ cursor: tool === 'eraser' ? 'crosshair' : 'default' }}
+            />
+          
+          <div className="absolute top-4 left-4 z-20
+                  bg-black bg-opacity-50
+                  text-white px-3 py-1
+                  rounded-md font-semibold">
+            {levelTitles[currentLevel] || '맵 제목 없음'}
+          </div>
+          {map_constraints[currentLevel] && (
+              <div className="absolute top-4 right-4 z-20
+                      bg-black bg-opacity-50
+                      text-white px-3 py-1
+                      rounded-md font-semibold">
+                {map_constraints[currentLevel]}
+              </div>
+            )}
           {/* 커서를 표시하는 별도의 캔버스 */}
           <canvas
             ref={cursorCanvasRef}

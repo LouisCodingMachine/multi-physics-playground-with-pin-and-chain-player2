@@ -1,21 +1,15 @@
+// src/levels/level14.ts
 import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
-// 스테이지 10 힌지 위치 상수
-export const LEVEL10_HINGE_Y = {
-  top:    60,
-  middle: 160,
-  bottom: 260,
-};
-
 export const createLevel10: LevelFactory = (world) => {
-  // 0) 기본 벽 설정
+  // 기본 벽 옵션
   const wallOptions = {
     isStatic: true,
     label: 'wall',
     collisionFilter: {
-      category: 0x0001,
-      mask: 0xFFFF,
+    category: 0x0001,
+    mask: 0xFFFF,
     },
   };
   const walls = [
@@ -26,119 +20,117 @@ export const createLevel10: LevelFactory = (world) => {
     wall.render.fillStyle = '#94a3b8';
   });
 
-  // 1) 첫 번째 상자
-  const floor1 = Matter.Bodies.rectangle(350, 450, 120, 50, {
+  // 1) 바닥 생성
+  const floor = Matter.Bodies.rectangle(400, 610, 810, 20, {
     isStatic: true,
-    label: 'floor1',
-    render: { fillStyle: '#10b981' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF, group: -10 },
+    label: 'wall_bottom',
+    render: { fillStyle: '#94a3b8' },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
 
-  // 2) 두 번째 상자
-  const floor2 = Matter.Bodies.rectangle(570, 550, 120, 200, {
+  // 2) 왼쪽 받침용 박스
+  const support1 = Matter.Bodies.rectangle(50, 480, 40, 20, {
     isStatic: true,
-    label: 'floor2',
+    label: 'support1',
     render: { fillStyle: '#10b981' },
     collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
 
-  // 3) 세 번째 상자
-  const floor3 = Matter.Bodies.rectangle(710, 550, 160, 300, {
+  const support2 = Matter.Bodies.rectangle(260, 250, 40, 20, {
     isStatic: true,
-    label: 'floor3',
+    label: 'support1',
     render: { fillStyle: '#10b981' },
     collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
 
-  // 3-2) 안전 박스
-  const safeBox = Matter.Bodies.rectangle(810, 380, 40, 450, {
-    isStatic: true,
-    label: 'safe_box',
-    render: { fillStyle: '#10b981' },
-    collisionFilter: { category: 0x0001, mask: 0xFFFF },
-  });
-
-  // 힌지 그룹
-  const hingeGroup = -10;
-
-  // 4) 힌지 달린 상자
-  const hingeBox = Matter.Bodies.rectangle(350, LEVEL10_HINGE_Y.middle, 150, 100, {
-    isStatic: true,
-    label: 'hingeBox',
-    frictionAir: 0,
+  // 3) 레버 판자
+  const plank = Matter.Bodies.rectangle(400, 350, 470, 20, {
+    label: 'leverPlank',
+    density: 0.0001,
     friction: 0,
     frictionStatic: 0,
-    render: { fillStyle: '#10b981' },
-    collisionFilter: { category: 0x0002, mask: 0x0001, group: hingeGroup },
+    restitution: 1,
+    render: { fillStyle: '#964b00' },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
 
-  // 5) 힌지 축 (nail)
-  const nail15_0 = Matter.Bodies.circle(
-    hingeBox.position.x,
-    hingeBox.position.y,
-    10,
-    {
-      isStatic: true,
-      label: 'nail',
-      collisionFilter: { category: 0x0002, mask: 0x0001, group: hingeGroup },
-      render: { fillStyle: 'rgba(0,0,0,0)', strokeStyle: '#fbbf24', lineWidth: 3 },
-    }
-  );
+  // 4) 왼쪽 스쿱
+  const leftBase  = Matter.Bodies.rectangle(200, 340,  80, 10, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const leftWallA = Matter.Bodies.rectangle(160, 325,  10, 40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const leftWallB = Matter.Bodies.rectangle(240, 325,  10, 40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
 
-  // 6) 제약 조건 (pivot)
-  const pivot15 = Matter.Constraint.create({
-    bodyA: hingeBox,
-    pointA: { x: 0, y: 0 },
-    bodyB: nail15_0,
+  // 5) 오른쪽 스쿱
+  const rightBase  = Matter.Bodies.rectangle(580, 340, 100, 10, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const rightWallA = Matter.Bodies.rectangle(530, 325, 10,  40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const rightWallB = Matter.Bodies.rectangle(630, 325, 10,  40, { render: { fillStyle: '#4B5563' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+
+  // 6) 레버 복합체 생성
+  const lever = Matter.Body.create({
+    parts: [plank, leftBase, leftWallA, leftWallB, rightBase, rightWallA, rightWallB],
+    label: 'lever',
+    render: { visible: true },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
+  });
+
+  // 7) 지렛대 축
+  const fulcrum = Matter.Bodies.circle(250, 370, 10, {
+    isStatic: true,
+    label: 'fulcrum',
+    render: { fillStyle: 'rgba(0,0,0,0)', strokeStyle: '#fbbf24', lineWidth: 1 },
+    collisionFilter: { group: -1, category: 0x0002, mask: 0x0000 },
+  });
+
+  // 8) 힌지 연결
+  const pivot = Matter.Constraint.create({
+    bodyA: lever,
+    pointA: { x: -20, y: 0 },
+    bodyB: fulcrum,
     pointB: { x: 0, y: 0 },
     length: 0,
     stiffness: 1,
-    damping: 0,
-    collideConnected: false,
     render: { visible: false },
+    label: 'leverPivot',
   });
 
-  // 7) 공 및 별
-  const ball = Matter.Bodies.circle(350, 400, 15, {
+  // 9) 공 생성
+  const ball = Matter.Bodies.circle(50, 310, 15, {
     label: 'ball',
-    restitution: 1,
-    frictionAir: 0,
-    friction: 0,
+      // 밀도: 면적(Area) × density 로 mass를 계산
+    frictionAir:  0.001,   
     render: { fillStyle: '#ef4444' },
     collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
-  const star = Matter.Bodies.trapezoid(720, 390, 20, 20, 1, {
+
+  // 10) 별 생성
+  const star = Matter.Bodies.trapezoid(700, 500, 20, 20, 1, {
     isStatic: true,
     label: 'balloon',
     render: { fillStyle: '#fbbf24' },
     collisionFilter: { category: 0x0001, mask: 0x0001 },
   });
 
-  // 8) 월드에 추가
+  // 11) 추가 박스 생성
+  const upperRightBox = Matter.Bodies.rectangle(750, 120, 20, 80, { isStatic: true, label: 'upper_right_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const lowerRightBox = Matter.Bodies.rectangle(750, 350, 20, 300, { isStatic: true, label: 'lower_right_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const lowerLeftBox  = Matter.Bodies.rectangle(650, 425, 20, 80, { isStatic: true, label: 'lower_left_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const upperLeftBox  = Matter.Bodies.rectangle(620, 385, 80, 20, { isStatic: true, label: 'upper_left_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const bottomBox     = Matter.Bodies.rectangle(700, 520, 80, 20, { isStatic: true, label: 'bottom_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+
+  // 월드에 바디 추가
   Matter.World.add(world, [
     ...walls,
-    floor1,
-    floor2,
-    floor3,
-    safeBox,
-    hingeBox,
-    nail15_0,
-    pivot15,
-    ball,
-    star,
+    floor, support1,support2,
+    lever, fulcrum, pivot,
+    ball, star,
+    upperRightBox, lowerRightBox, lowerLeftBox, upperLeftBox, bottomBox,
   ]);
 
-  // 9) 반환
+  // 반환
   return [
     ...walls,
-    floor1,
-    floor2,
-    floor3,
-    safeBox,
-    hingeBox,
-    nail15_0,
-    pivot15,
-    ball,
-    star,
+    floor, support1,support2,
+    lever, fulcrum, pivot,
+    ball, star,
+    upperRightBox, lowerRightBox, lowerLeftBox, upperLeftBox, bottomBox
   ];
 };

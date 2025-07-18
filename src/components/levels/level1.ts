@@ -1,4 +1,4 @@
-// src/levels/level1.ts
+// src/levels/level20.ts
 import Matter from 'matter-js';
 import type { LevelFactory } from './index';
 
@@ -7,65 +7,140 @@ export const createLevel1: LevelFactory = (world) => {
   const wallOptions = {
     isStatic: true,
     label: 'wall',
-    friction: 1,
-    frictionStatic: 1,
-    restitution: 0.2,
     collisionFilter: {
-      category: 0x0001,
-      mask: 0xFFFF,
+    category: 0x0001,
+    mask: 0xFFFF,
     },
   };
-
-  // 바닥 벽만 활성화 (필요 시 주석 해제)
   const walls = [
     Matter.Bodies.rectangle(400, 610, 810, 20, { ...wallOptions, label: 'wall_bottom' }),
   ];
-
   walls.forEach((wall) => {
     Matter.Body.setStatic(wall, true);
     wall.render.fillStyle = '#94a3b8';
   });
 
-  // 공 생성
-  const ball = Matter.Bodies.circle(200, 300, 15, {
-    render: { fillStyle: '#ef4444' },
-    label: 'ball',
-    frictionAir:  0.001,  
-    collisionFilter: {
-      category: 0x0001,
-      mask: 0xFFFF,
-    },
+  // 1) 왼쪽에 세로로 긴 땅 (벽처럼)
+  const leftWall = Matter.Bodies.rectangle(
+    50, 500, 300, 400,
+    {
+      isStatic: true,
+      label: 'vertical_ground_20',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 2) 그 옆의 큰 땅 (수평 플랫폼)
+  const ground = Matter.Bodies.rectangle(
+    350, 600, 600, 120,
+    {
+      isStatic: true,
+      label: 'ground_20',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  // 3) 작은 사각형 축 (fulcrum base)
+  const fulcrumBase = Matter.Bodies.rectangle(
+    350, 530, 10, 70,
+    {
+      isStatic: true,
+      label: 'fulcrum_base_20',
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: {
+        group: -1,
+        category: 0x0001,
+        mask: 0xFFFF,
+      },
+    }
+  );
+
+  // 4) 힌지 원 (pivotCircle)
+  const pivotCircle = Matter.Bodies.circle(
+    350, 490, 5,
+    {
+      isStatic: true,
+      label: 'pivot_circle_20',
+      render: { fillStyle: '#fbbf24', strokeStyle: '#fbbf24', lineWidth: 1 },
+      collisionFilter: {
+        group: -1,
+        category: 0x0001,
+        mask: 0xFFFF,
+      },
+    }
+  );
+
+  // 5) 시소 판자 (lever)
+  const lever = Matter.Bodies.rectangle(
+    350, 520, 300, 20,
+    {
+      label: 'lever',
+      frictionAir:  0.001,  
+      render: { fillStyle: '#6b7280' },
+      collisionFilter: { group: -1, category: 0x0001, mask: 0xFFFF },
+    }
+  );
+
+  const hingeConstraint = Matter.Constraint.create({
+    bodyA: lever,
+    pointA: { x: 0, y: 0 },
+    bodyB: pivotCircle,
+    pointB: { x: 0, y: 0 },
+    length: 0,
+    stiffness: 1,
+    damping: 0,
+    render: { visible: false },
   });
 
-  // 별(스타) 생성
-  const star = Matter.Bodies.trapezoid(600, 290, 20, 20, 1, {
-    render: { fillStyle: '#fbbf24' },
-    label: 'balloon',
-    isStatic: true,
-    collisionFilter: {
-      category: 0x0001,
-      mask: 0x0001,
-    },
-  });
+  // 6) 공 생성 (시소 위)
+  const ballY = 490 - 10 - 15; // pivot y - lever half-height - ball radius
+  const ball = Matter.Bodies.circle(
+    230, ballY, 15,
+    {
+      label: 'ball',
+      restitution: 0.3,
+      friction: 0.05,
+      frictionAir: 0.01,
+      render: { fillStyle: '#ef4444' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
+  // initialBallPositionRef.current = { x: 230, y: ballY };
+  // ballRef.current = ball;
 
-  // 타워 구조물 생성
-  const towers = [1, 2, 3, 4, 5].map((i) =>
-    Matter.Bodies.rectangle(
-      200 + 100 * (i - 1),
-      400,
-      50,
-      200,
-      {
-        isStatic: true,
-        label: `tower${i}`,
-        collisionFilter: {category: 0x0002, mask: 0xFFFD,
-        },
-      }
-    )
+  // 7) 오른쪽 끝에 별 생성
+  const star = Matter.Bodies.trapezoid(
+    600, 530, 20, 20, 1,
+    {
+      isStatic: true,
+      label: 'balloon',
+      render: { fillStyle: '#fbbf24' },
+      collisionFilter: { category: 0x0001, mask: 0x0001 },
+    }
   );
 
   // 월드에 바디 추가
-  Matter.World.add(world, [...towers, ...walls, ball, star]);
+  Matter.World.add(world, [...walls,
+    leftWall,
+    ground,
+    fulcrumBase,
+    pivotCircle,
+    lever,
+    hingeConstraint,
+    ball,
+    star,
+  ]);
 
-  return [...towers, ...walls, ball, star];
+  // 반환
+  return [...walls,
+    leftWall,
+    ground,
+    fulcrumBase,
+    pivotCircle,
+    lever,
+    ball,
+    star,
+  ];
 };
