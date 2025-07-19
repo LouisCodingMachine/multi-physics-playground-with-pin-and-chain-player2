@@ -37,6 +37,14 @@ export const createLevel16: LevelFactory = (world) => {
   // initialBallPositionRef.current = { x: 100, y: 100 };
   // ballRef.current = ball;
 
+  const ballGround = Matter.Bodies.rectangle(100, 200, 50, 20, {
+      isStatic: true,
+      label: 'ballGround_18_reject_pin',
+      render: { fillStyle: '#ef4444' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    });
+  
+
   // 2) 오른쪽 아래 땅 생성
   const ground = Matter.Bodies.rectangle(
     650,   // X: 오른쪽
@@ -67,8 +75,8 @@ export const createLevel16: LevelFactory = (world) => {
   );
 
   // 월드에 바디 추가
-  Matter.World.add(world, [...walls,ball, ground, star]);
+  Matter.World.add(world, [...walls,ball, ballGround, ground, star]);
 
   // 반환
-  return [...walls,ball, ground, star];
+  return [...walls,ball, ballGround, ground, star];
 };

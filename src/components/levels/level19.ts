@@ -20,33 +20,40 @@ export const createLevel19: LevelFactory = (world) => {
     wall.render.fillStyle = '#94a3b8';
   });
 
-  // 1) 곡선형 '무지개' 플랫폼 생성
-  const rainbowVertices = Array.from({ length: 21 }, (_, i) => {
-    const theta = Math.PI + (i / 20) * Math.PI; // π ~ 2π
-    return {
-      x: 400 + 150 * Math.cos(theta),
-      y: 400 + 150 * Math.sin(theta),
-    };
+  const ballGround = Matter.Bodies.rectangle(450, 200, 50, 20, {
+    isStatic: true,
+    label: 'ballGround_18_reject_pin',
+    render: { fillStyle: '#ef4444' },
+    collisionFilter: { category: 0x0001, mask: 0xFFFF },
   });
-  const rainbow = Matter.Bodies.fromVertices(
-    300, 150,
-    [rainbowVertices],
-    {
-      isStatic: true,
-      label: 'rainbow_24',
-      render: {
-        fillStyle: '#fbbf24',
-        strokeStyle: '#f59e0b',
-        lineWidth: 4,
-      },
-      collisionFilter: { category: 0x0001, mask: 0xFFFF },
-    },
-    true
-  );
+
+  // 1) 곡선형 '무지개' 플랫폼 생성
+  // const rainbowVertices = Array.from({ length: 21 }, (_, i) => {
+  //   const theta = Math.PI + (i / 20) * Math.PI; // π ~ 2π
+  //   return {
+  //     x: 400 + 150 * Math.cos(theta),
+  //     y: 400 + 150 * Math.sin(theta),
+  //   };
+  // });
+  // const rainbow = Matter.Bodies.fromVertices(
+  //   300, 150,
+  //   [rainbowVertices],
+  //   {
+  //     isStatic: true,
+  //     label: 'rainbow_24',
+  //     render: {
+  //       fillStyle: '#fbbf24',
+  //       strokeStyle: '#f59e0b',
+  //       lineWidth: 4,
+  //     },
+  //     collisionFilter: { category: 0x0001, mask: 0xFFFF },
+  //   },
+  //   true
+  // );
 
   // 2) 공 생성 및 초기 위치 저장
-  const BallX = 180;
-  const BallY = 100;  // 필요에 따라 수정
+  const BallX = 450;
+  const BallY = 150;  // 필요에 따라 수정
   const ball = Matter.Bodies.circle(
     BallX,
     BallY,
@@ -111,20 +118,22 @@ export const createLevel19: LevelFactory = (world) => {
   // 7) 월드에 모든 바디 추가
   Matter.World.add(world, [
     ...walls,
-    rainbow,
+    // rainbow,
     ball,
     leftBox,
     rightBox,
+    ballGround,
     star,
     plank,
   ]);
 
   return [
     ...walls,
-    rainbow,
+    // rainbow,
     ball,
     leftBox,
     rightBox,
+    ballGround,
     star,
     plank,
   ];

@@ -30,7 +30,7 @@ declare module 'matter-js' {
     collideConnected?: boolean;
   }
 }
-const TOTAL_LEVELS = 30; // 총 스테이지 수를 정의합니다.
+const TOTAL_LEVELS = 26; // 총 스테이지 수를 정의합니다.
 interface PhysicsCanvasProps {
   isPlayerOne: boolean;
 }
@@ -308,7 +308,7 @@ useEffect(() => {
   }) => {
     if (data.playerId === p1) return
     // ─── Level 6 전용: centerX/Y 로 사각형 그리기 ───
-    if ((data.currentLevel === 8 || data.currentLevel === 9 || data.currentLevel === 10 || data.currentLevel === 20) && data.centerX != null && data.centerY != null) {
+    if ((data.currentLevel === 8 || data.currentLevel === 9 || data.currentLevel === 20) && data.centerX != null && data.centerY != null) {
       const square = Matter.Bodies.rectangle(
         data.centerX, data.centerY,
         80, 80,
@@ -394,9 +394,13 @@ useEffect(() => {
       return;
     }
 
-    if (currentLevelRef.current === 10 && targetBody.label === 'lever') {
-      data.radius = 10;
+    if (targetBody.label.includes("reject_pin")) {
+      return;
     }
+
+    // if (currentLevelRef.current === 10 && targetBody.label === 'lever') {
+    //   data.radius = 10;
+    // }
 
     if (currentLevelRef.current === 12 && targetBody.label === 'Tshape') {
       data.radius = 10;
@@ -425,36 +429,37 @@ useEffect(() => {
     targetBody.collisionFilter.category = 0x0002;
     targetBody.collisionFilter.mask     = 0xFFFD;
     // 월드에 추가 및 상태 업데이트
-    if(currentLevelRef.current === 10 && targetBody.label === 'lever') {
-      nail.label += '_fulcrum';
-      nail.isStatic = true; // 레버의 축 역할을 하기 때문에 정적이어야 함
-      Matter.Composite.add(engineRef.current.world, nail);
+    // if(currentLevelRef.current === 10 && targetBody.label === 'lever') {
+    //   nail.label += '_fulcrum';
+    //   nail.isStatic = true; // 레버의 축 역할을 하기 때문에 정적이어야 함
+    //   Matter.Composite.add(engineRef.current.world, nail);
 
-      const lever = bodies.find(body => body.label === 'lever')
+    //   const lever = bodies.find(body => body.label === 'lever')
 
-      // 8) 힌지 연결
-      if(lever) {
-        // const pivot = Matter.Constraint.create({
-        //   bodyA: lever,
-        //   pointA: { x: nail.position.x - lever.position.x, y: nail.position.y-lever.position.y },
-        //   bodyB: nail,
-        //   pointB: { x: 0, y: 0 },
-        //   length: 0,
-        //   stiffness: 1,
-        //   render: { visible: true },
-        //   label: "leverPivot",
-        // });
-        // Matter.Composite.add(engineRef.current.world, pivot);
-      }
+    //   // 8) 힌지 연결
+    //   if(lever) {
+    //     // const pivot = Matter.Constraint.create({
+    //     //   bodyA: lever,
+    //     //   pointA: { x: nail.position.x - lever.position.x, y: nail.position.y-lever.position.y },
+    //     //   bodyB: nail,
+    //     //   pointB: { x: 0, y: 0 },
+    //     //   length: 0,
+    //     //   stiffness: 1,
+    //     //   render: { visible: true },
+    //     //   label: "leverPivot",
+    //     // });
+    //     // Matter.Composite.add(engineRef.current.world, pivot);
+    //   }
 
-      const fulcrum = bodies.find(body => body.label === 'fulcrum' || body.label.includes('fulcrum'));
-      const constraints = Matter.Composite.allConstraints(engineRef.current.world);
-      const leverPivot = constraints.find(ct => ct.label === 'leverPivot');
-      if(fulcrum && leverPivot) {
-        Matter.Composite.remove(engineRef.current.world, fulcrum);
-        Matter.Composite.remove(engineRef.current.world, leverPivot);
-      }
-    } else if(currentLevelRef.current === 12 && targetBody.label === 'Tshape') {
+    //   const fulcrum = bodies.find(body => body.label === 'fulcrum' || body.label.includes('fulcrum'));
+    //   const constraints = Matter.Composite.allConstraints(engineRef.current.world);
+    //   const leverPivot = constraints.find(ct => ct.label === 'leverPivot');
+    //   if(fulcrum && leverPivot) {
+    //     Matter.Composite.remove(engineRef.current.world, fulcrum);
+    //     Matter.Composite.remove(engineRef.current.world, leverPivot);
+    //   }
+    // } else 
+    if(currentLevelRef.current === 12 && targetBody.label === 'Tshape') {
       nail.label += '_Tshape';
       nail.isStatic = true; // tshape의 축 역할을 하기 때문에 정적이어야 함
       Matter.Composite.add(engineRef.current.world, nail);
@@ -501,7 +506,8 @@ useEffect(() => {
       stiffness: 1,
       render: { visible: true },
       collideConnected: false,
-      label: currentLevelRef.current === 10 && targetBody.label === 'lever' ? 'leverPivot' : currentLevelRef.current === 18 && targetBody.label === 'Tshape' ? 'constraint_Tshape' : '',
+      // label: currentLevelRef.current === 10 && targetBody.label === 'lever' ? 'leverPivot' : currentLevelRef.current === 18 && targetBody.label === 'Tshape' ? 'constraint_Tshape' : '',
+      label: currentLevelRef.current === 18 && targetBody.label === 'Tshape' ? 'constraint_Tshape' : '',
     });
     Matter.Composite.add(engineRef.current.world, constraint);
     console.log("constraint: ", constraint);
@@ -782,23 +788,23 @@ const resetBallAndObstacles = () => {
 
       // 장애물과 충돌 시 레벨별 1초 뒤 리셋
       } else if ((a === 'ball' && b === 'obstacle')) {
-        const scheduledLvl = currentLevelRef.current;
+        // const scheduledLvl = currentLevelRef.current;
         
-        setTimeout(() => {
-          // 사용자가 이미 다른 레벨로 이동했으면 무시
-          if (currentLevelRef.current !== 5) return;
-          if (scheduledLvl === 5) {
-            resetBallAndObstacles();
-          }
-        }, 1000);
+        // setTimeout(() => {
+        //   // 사용자가 이미 다른 레벨로 이동했으면 무시
+        //   if (currentLevelRef.current !== 5) return;
+        //   if (scheduledLvl === 5) {
+        //     resetBallAndObstacles();
+        //   }
+        // }, 1000);
 
-        setTimeout(() => {
-          // 사용자가 이미 다른 레벨로 이동했으면 무시
-          if (currentLevelRef.current !== 6) return;
-          if (scheduledLvl === 6) {
-            resetBallAndObstacles();
-          }
-        }, 1000);
+        // setTimeout(() => {
+        //   // 사용자가 이미 다른 레벨로 이동했으면 무시
+        //   if (currentLevelRef.current !== 6) return;
+        //   if (scheduledLvl === 6) {
+        //     resetBallAndObstacles();
+        //   }
+        // }, 1000);
       }
     });
   };
@@ -955,7 +961,7 @@ const createPhysicsBody = (
   customId?: string
 ) => {
   // ── Stage 6: 무조건 80×80 사각형만 ──
-  if (currentLevelRef.current === 8 || currentLevelRef.current === 9 || currentLevelRef.current === 10) {
+  if (currentLevelRef.current === 8 || currentLevelRef.current === 9) {
     // drawPoints 가 비어 있으면 캔버스 중앙
     const cx = points.length
       ? points.reduce((sum, p) => sum + p.x, 0) / points.length
@@ -1365,6 +1371,17 @@ const createPhysicsBody = (
     // addNail(nail);
 
     // 2) 서버에 drawPin 이벤트 전송
+
+    const mousePosition = { x: cx, y: cy };
+    const bodies = Matter.Composite.allBodies(engineRef.current.world);
+    const targetBody = bodies.find(body =>
+      Matter.Bounds.contains(body.bounds, mousePosition)
+    );
+    if (!targetBody) {
+      console.log("No body found under nail position.");
+      return;
+    }
+    
     socket.emit('drawPin', {
       customId,
       centerX: cx,
@@ -1402,7 +1419,7 @@ const createPhysicsBody = (
       return;
     }
     // Level 6/18 전용: 80×80 사각형만
-    if (currentLevel === 8 || currentLevel === 20 || currentLevelRef.current === 9 || currentLevelRef.current === 10) {
+    if (currentLevel === 8 || currentLevel === 20 || currentLevelRef.current === 9) {
       const cx = drawPoints.length
         ? drawPoints.reduce((sum, p) => sum + p.x, 0) / drawPoints.length
         : canvasRef.current!.width / 2;
@@ -1725,7 +1742,8 @@ const createPhysicsBody = (
               currentLevel === 6  ||
               currentLevel === 7  ||
               currentLevel === 8  ||
-              currentLevel === 9
+              currentLevel === 9  || 
+              currentLevel === 10
             }
             className={`
               relative
@@ -1738,7 +1756,8 @@ const createPhysicsBody = (
                 currentLevel === 6  ||
                 currentLevel === 7  ||
                 currentLevel === 8  ||
-                currentLevel === 9
+                currentLevel === 9  ||
+                currentLevel === 10
               ) ? 'opacity-50 cursor-not-allowed' : ''}
             `}
           >
@@ -1749,7 +1768,8 @@ const createPhysicsBody = (
               currentLevel === 6  ||
               currentLevel === 7  ||
               currentLevel === 8  ||
-              currentLevel === 9
+              currentLevel === 9  ||
+              currentLevel === 10
             ) && (
               <X
                 size={48}
@@ -1768,7 +1788,7 @@ const createPhysicsBody = (
             <Link size={24} />
           </button> */}
           {/* 밀기 도구 버튼 */}
-          {(currentLevel === 11 || currentLevel === 4 || currentLevel === 5 || currentLevel === 6 || currentLevel === 7 || currentLevel === 8 || currentLevel === 9) && (
+          {(currentLevel === 11 || currentLevel === 4 || currentLevel === 5 || currentLevel === 6 || currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10) && (
             <X
               size={48}
               className="absolute inset-0 m-auto text-red-500 pointer-events-none"
@@ -1779,7 +1799,7 @@ const createPhysicsBody = (
             className={`relative
               p-2 rounded
               ${tool === 'push' ? 'bg-blue-500 text-white' : 'bg-gray-200'}
-              ${(currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 11)? 'opacity-50 cursor-not-allowed' : ''}
+              ${(currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 10 || currentLevel === 11)? 'opacity-50 cursor-not-allowed' : ''}
             `}
             style={{
               display: 'flex',
@@ -1839,7 +1859,7 @@ const createPhysicsBody = (
     </>
   )}
 
-          {currentLevelRef.current === 9 && (
+          {currentLevelRef.current === 9 || currentLevelRef.current === 10 && (
             <button
               onClick={resetLevel}
               className="relative p-2 rounded bg-gray-200"

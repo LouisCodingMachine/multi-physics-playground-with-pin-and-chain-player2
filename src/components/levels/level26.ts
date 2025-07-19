@@ -3,35 +3,72 @@ import type { LevelFactory } from './index';
 
 // Factory for Map 10 (Level 26)
 export const createLevel26: LevelFactory = (world) => {
-  const walls = [
-    Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: { category: 0x0001, mask: 0xFFFF } }),
-  ];
-  walls.forEach(w => Matter.Body.setStatic(w, true));
+  const bodies: Matter.Body[] = [];
+    const constraints: Matter.Constraint[] = [];
+  
+    // 바닥
+    bodies.push(Matter.Bodies.rectangle(400, 610, 810, 20, {
+      isStatic: true, label: 'wall_bottom',
+      render: { fillStyle: '#6b7280' }
+    }));
 
-  const ball = Matter.Bodies.circle(150, 545, 15, { render: { fillStyle: '#ef4444' }, label: 'ball', restitution: 0x0003, friction: 0.05, frictionAir: 0.01, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const horizontalPlatform = Matter.Bodies.rectangle(150, 550, 150, 100, { isStatic: true, label: 'horizontal_platform', render: { fillStyle: '#6b7280' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const star = Matter.Bodies.trapezoid(600, 130, 20, 20, 1, { isStatic: true, label: 'balloon', render: { fillStyle: '#fbbf24' }, collisionFilter: { category: 0x0001, mask: 0x0001 } });
-  const frameTop = Matter.Bodies.rectangle(600, 80, 100, 25, { isStatic: true, label: 'frame_top', render: { fillStyle: '#94a3b8' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const frameLeft = Matter.Bodies.rectangle(550, 110, 25, 85, { isStatic: true, label: 'frame_left', render: { fillStyle: '#94a3b8' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const frameRight = Matter.Bodies.rectangle(650, 110, 25, 85, { isStatic: true, label: 'frame_right', render: { fillStyle: '#94a3b8' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-
-  Matter.World.add(world, [
-    ...walls,
-    ball,
-    horizontalPlatform,
-    star,
-    frameTop,
-    frameLeft,
-    frameRight,
-  ]);
-
-  return [
-    ...walls,
-    ball,
-    horizontalPlatform,
-    star,
-    frameTop,
-    frameLeft,
-    frameRight,
-  ];
+    bodies.push(Matter.Bodies.rectangle(
+        50, 100, 60, 30,
+        {
+          isStatic: true,
+          label: 'right_down_green_platform',
+          render: { fillStyle: '#10b981' },
+          collisionFilter: { category: 0x0001, mask: 0xFFFF },
+        }
+      ));
+  
+    // 공
+    bodies.push(Matter.Bodies.circle(50, 30, 12, {
+      restitution: 0.5, label: 'ball',
+      render: { fillStyle: '#ef4444' }
+    }));
+  
+    // 나선형 램프 생성 (5개 세그먼트)
+    for (let i = 0; i < 5; i++) {
+      const ramp = Matter.Bodies.rectangle(
+        200 + i*100,
+        200 + i*60,
+        200,
+        20,
+        {
+          isStatic: true,
+          angle: Math.PI/4 * (i % 2 ? -1 : 1),
+          label: `spiral${i}`,
+          render: { fillStyle: '#4b5563' }
+        }
+      );
+      bodies.push(ramp);
+    }
+  
+    // 회전 추(스윙)
+    const swingPivot = Matter.Bodies.circle(600, 200, 8, {
+      isStatic: true, label: 'pivot32',
+      render: { fillStyle: '#111827' }
+    });
+    const swingBob = Matter.Bodies.circle(600, 320, 20, {
+      density: 0.02, label: 'bob32',
+      render: { fillStyle: '#3b82f6' }
+    });
+    bodies.push(swingPivot, swingBob);
+  
+    constraints.push(Matter.Constraint.create({
+      bodyA: swingPivot, pointA: { x: 0, y: 0 },
+      bodyB: swingBob, pointB: { x: 0, y: -20 },
+      length: 140, stiffness: 1
+    }));
+  
+    // 목표 풍선
+    const balloon = Matter.Bodies.trapezoid(750, 550, 20, 20,1, {
+          isStatic: true, label: 'balloon',
+          render: { fillStyle: '#fbbf24' }
+        });
+        bodies.push(balloon);
+  
+    Matter.World.add(world, [...bodies, ...constraints]);
+    return [...bodies, ...constraints];
 };

@@ -3,35 +3,67 @@ import type { LevelFactory } from './index';
 
 // Factory for Map 9 (Level 25)
 export const createLevel25: LevelFactory = (world) => {
-  const walls = [
-    Matter.Bodies.rectangle(400, 610, 810, 20, { isStatic: true, label: 'wall_bottom', collisionFilter: { category: 0x0001, mask: 0xFFFF } }),
-  ];
-  walls.forEach(w => Matter.Body.setStatic(w, true));
+  const bodies: Matter.Body[] = [];
+  const constraints: Matter.Constraint[] = [];
 
-  const ball = Matter.Bodies.circle(500, 250, 15, { render: { fillStyle: '#ef4444' }, label: 'ball', restitution: 0x0003, friction: 0.05, frictionAir: 0.01, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const star = Matter.Bodies.trapezoid(150, 310, 20, 20, 1, { isStatic: true, label: 'balloon', render: { fillStyle: '#fbbf24' }, collisionFilter: { category: 0x0001, mask: 0x0001 } });
-  const redPlatform = Matter.Bodies.rectangle(120, 340, 250, 30, { isStatic: true, label: 'red_platform', render: { fillStyle: '#ef4444' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const greenRamp = Matter.Bodies.trapezoid(520, 310, 220, 100, 2, { isStatic: true, label: 'green_ramp', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const centralUpObstacle = Matter.Bodies.rectangle(400, 170, 90, 350, { isStatic: true, label: 'central_up_obstacle', render: { fillStyle: '#3b82f6' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const centralDownObstacle = Matter.Bodies.rectangle(400, 550, 90, 100, { isStatic: true, label: 'central_down_obstacle', render: { fillStyle: '#3b82f6' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  // 바닥
+  bodies.push(Matter.Bodies.rectangle(400, 610, 810, 20, {
+    isStatic: true, label: 'wall_bottom',
+    render: { fillStyle: '#6b7280' }
+  }));
 
-  Matter.World.add(world, [
-    ...walls,
-    ball,
-    star,
-    redPlatform,
-    greenRamp,
-    centralUpObstacle,
-    centralDownObstacle,
-  ]);
+  bodies.push(Matter.Bodies.rectangle(
+    100, 200, 60, 30,
+    {
+      isStatic: true,
+      label: 'right_down_green_platform',
+      render: { fillStyle: '#10b981' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  ));
+  
+  // 시작 공
+  bodies.push(Matter.Bodies.circle(100, 150, 15, {
+    restitution: 0.4, label: 'ball',
+    render: { fillStyle: '#ef4444' }
+  }));
 
-  return [
-    ...walls,
-    ball,
-    star,
-    redPlatform,
-    greenRamp,
-    centralUpObstacle,
-    centralDownObstacle,
-  ];
+  // 지그재그 플랫폼 3개
+  const zig1 = Matter.Bodies.rectangle(250, 300, 200, 20, {
+    isStatic: true, angle: Math.PI/8, label: 'zig1',
+    render: { fillStyle: '#4b5563' }
+  });
+  const zig2 = Matter.Bodies.rectangle(450, 350, 200, 20, {
+    isStatic: true, angle: -Math.PI/8, label: 'zig2',
+    render: { fillStyle: '#4b5563' }
+  });
+  const zig3 = Matter.Bodies.rectangle(650, 300, 200, 20, {
+    isStatic: true, angle: Math.PI/8, label: 'zig3',
+    render: { fillStyle: '#4b5563' }
+  });
+  bodies.push(zig1, zig2, zig3);
+
+  // 회전 기어 (중앙 기어)
+  const gear = Matter.Bodies.circle(400, 450, 40, {
+    isStatic: true, label: 'gear',
+    render: { fillStyle: '#111827' }
+  });
+  bodies.push(gear);
+
+  // gear 회전하는 작은 원 (시각용 constraint)
+  constraints.push(Matter.Constraint.create({
+    bodyA: gear, pointA: { x: 0, y: 0 },
+    pointB: { x: 400, y: 450 },
+    length: 0, stiffness: 1
+  }));
+
+  // 목표 풍선
+  const balloon = Matter.Bodies.trapezoid(750, 310, 20, 20,1, {
+        isStatic: true, label: 'balloon',
+        render: { fillStyle: '#fbbf24' }
+      });
+      bodies.push(balloon);
+
+  Matter.World.add(world, [...bodies, ...constraints]);
+  return [...bodies, ...constraints];
 };

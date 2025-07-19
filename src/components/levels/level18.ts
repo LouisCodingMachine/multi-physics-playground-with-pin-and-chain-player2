@@ -25,12 +25,12 @@ export const createLevel18: LevelFactory = (world) => {
   const diagonal = Matter.Bodies.rectangle(
     100,          // X: 화면 왼쪽
     100,          // Y: 화면 상단
-    100,          // 길이
+    50,          // 길이
     20,           // 두께
     {
       isStatic: true,
       label: 'diagonal_19',
-      angle: Math.PI / 6, // 30도 기울기 (왼쪽이 위, 오른쪽이 아래)
+      // angle: Math.PI / 6, // 30도 기울기 (왼쪽이 위, 오른쪽이 아래)
       render: { fillStyle: '#6b7280' },
       collisionFilter: { category: 0x0001, mask: 0xFFFF },
     }
