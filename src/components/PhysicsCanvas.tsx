@@ -1405,20 +1405,20 @@ const createPhysicsBody = (
   // ── 2) 펜 툴 전용 처리 ──
   if (tool === 'pen' && currentTurn === p1) {
     // 그리기 영역의 최소 폭/높이
-    const xs = drawPoints.map(p => p.x);
-    const ys = drawPoints.map(p => p.y);
-    const width  = Math.max(...xs) - Math.min(...xs);
-    const height = Math.max(...ys) - Math.min(...ys);
+    // const xs = drawPoints.map(p => p.x);
+    // const ys = drawPoints.map(p => p.y);
+    // const width  = Math.max(...xs) - Math.min(...xs);
+    // const height = Math.max(...ys) - Math.min(...ys);
 
-    const RATIO_THRESHOLD = 0.2;
-    const ratio = Math.min(width, height) / Math.max(width, height);
+    // const RATIO_THRESHOLD = 0.3;
+    // const ratio = Math.min(width, height) / Math.max(width, height);
 
-    if (ratio < RATIO_THRESHOLD) {
-      // 너무 얇아서 물체 생성 안 함
-      setIsDrawing(false);
-      setDrawPoints([]);
-      return;
-    }
+    // if (ratio < RATIO_THRESHOLD) {
+    //   // 너무 얇아서 물체 생성 안 함
+    //   setIsDrawing(false);
+    //   setDrawPoints([]);
+    //   return;
+    // }
     // Level 6/18 전용: 80×80 사각형만
     if (currentLevel === 8 || currentLevel === 20 || currentLevelRef.current === 9) {
       const cx = drawPoints.length
@@ -1898,20 +1898,19 @@ const createPhysicsBody = (
               style={{ cursor: tool === 'eraser' ? 'crosshair' : 'default' }}
             />
           
-          <div className="absolute top-4 left-4 z-20
-                  bg-black bg-opacity-50
-                  text-white px-3 py-1
-                  rounded-md font-semibold">
-            {levelTitles[currentLevel] || '맵 제목 없음'}
-          </div>
-          {map_constraints[currentLevel] && (
-              <div className="absolute top-4 right-4 z-20
-                      bg-black bg-opacity-50
-                      text-white px-3 py-1
-                      rounded-md font-semibold">
+          <div className="absolute top-4 left-4 right-4 z-20 flex justify-between items-start gap-4">
+            {/* 왼쪽: 레벨 제목 */}
+            <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-md font-semibold">
+              {levelTitles[currentLevel] || '맵 제목 없음'}
+            </div>
+
+            {/* 오른쪽: 맵 제약 조건 */}
+            {map_constraints[currentLevel] && (
+              <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-md font-semibold text-right">
                 {map_constraints[currentLevel]}
               </div>
             )}
+          </div>
           {/* 커서를 표시하는 별도의 캔버스 */}
           <canvas
             ref={cursorCanvasRef}
