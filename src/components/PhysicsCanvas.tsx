@@ -426,7 +426,6 @@ useEffect(() => {
     targetBody.collisionFilter.mask     = 0xFFFD;
     // 월드에 추가 및 상태 업데이트
     if(currentLevelRef.current === 10 && targetBody.label === 'lever') {
-      
       nail.label += '_fulcrum';
       nail.isStatic = true; // 레버의 축 역할을 하기 때문에 정적이어야 함
       Matter.Composite.add(engineRef.current.world, nail);
@@ -435,16 +434,17 @@ useEffect(() => {
 
       // 8) 힌지 연결
       if(lever) {
-        const pivot = Matter.Constraint.create({
-          bodyA: lever,
-          pointA: { x: nail.position.x - lever.position.x, y: nail.position.y-lever.position.y },
-          bodyB: nail,
-          pointB: { x: 0, y: 0 },
-          length: 0,
-          stiffness: 1,
-          render: { visible: true },
-        });
-        Matter.Composite.add(engineRef.current.world, pivot);
+        // const pivot = Matter.Constraint.create({
+        //   bodyA: lever,
+        //   pointA: { x: nail.position.x - lever.position.x, y: nail.position.y-lever.position.y },
+        //   bodyB: nail,
+        //   pointB: { x: 0, y: 0 },
+        //   length: 0,
+        //   stiffness: 1,
+        //   render: { visible: true },
+        //   label: "leverPivot",
+        // });
+        // Matter.Composite.add(engineRef.current.world, pivot);
       }
 
       const fulcrum = bodies.find(body => body.label === 'fulcrum' || body.label.includes('fulcrum'));
@@ -471,7 +471,7 @@ useEffect(() => {
           length: 0,
           stiffness: 1,
           render: { visible: true },
-          label: "constraint_Tshape"
+          label: "constraint_Tshape",
         });
         Matter.Composite.add(engineRef.current.world, pivot);
       }
@@ -499,11 +499,12 @@ useEffect(() => {
       pointB: { x: 0, y: 0 },
       length: 0,
       stiffness: 1,
-      render: { visible: false },
+      render: { visible: true },
       collideConnected: false,
       label: currentLevelRef.current === 10 && targetBody.label === 'lever' ? 'leverPivot' : currentLevelRef.current === 18 && targetBody.label === 'Tshape' ? 'constraint_Tshape' : '',
     });
     Matter.Composite.add(engineRef.current.world, constraint);
+    console.log("constraint: ", constraint);
 // 3) 연결된 모든 body 수집 → nail과 targetBody 모두 시작점으로
     const allConnected = new Set<Matter.Body>();
     const world = engineRef.current.world;
@@ -587,6 +588,22 @@ useEffect(() => {
     socket.off('erase', handleErase);
   };
 }, [socket]);
+
+function getSupportPositions(fulcrumX: number, fulcrumY: number) {
+  // 필요에 따라 각도/거리는 자유롭게 조정 가능
+  const r2 = 80, theta2 = -60 * Math.PI / 180; // support2는 fulcrum에서 80px, -60도
+  const r3 = 150, theta3 = 30 * Math.PI / 180; // support3는 fulcrum에서 150px, +30도
+
+  const s2x = fulcrumX + r2 * Math.cos(theta2);
+  const s2y = fulcrumY + r2 * Math.sin(theta2);
+  const s3x = fulcrumX + r3 * Math.cos(theta3);
+  const s3y = fulcrumY + r3 * Math.sin(theta3);
+
+  return {
+    support2: { x: s2x, y: s2y },
+    support3: { x: s3x, y: s3y }
+  }
+}
 
 
   useEffect(() => {
@@ -794,11 +811,11 @@ const resetBallAndObstacles = () => {
 
     // 레벨 11 특수 처리
     if (currentLevelRef.current === 11 && ballRef.current) {
-      const wallBottom = Matter.Composite.allBodies(world).find(b => b.label === 'wall_bottom');
-      if (wallBottom && ballRef.current.position.y > wallBottom.bounds.max.y - threshold) {
-        resetLevel();
-      }
-      return;
+      // const wallBottom = Matter.Composite.allBodies(world).find(b => b.label === 'wall_bottom');
+      // if (wallBottom && ballRef.current.position.y > wallBottom.bounds.max.y - threshold) {
+      //   resetLevel();
+      // }
+      // return;
     }
 
     // Stage 6~10: square_* 제거
@@ -812,11 +829,11 @@ const resetBallAndObstacles = () => {
 
     // 기본: 공이 바닥 아래로 떨어지면 위치 리셋
     const wallBottom = Matter.Composite.allBodies(world).find(b => b.label === 'wall_bottom');
-    if (ballRef.current && wallBottom && ballRef.current.position.y > wallBottom.bounds.max.y - threshold) {
-      Matter.Body.setPosition(ballRef.current, initialBallPositionRef.current);
-      Matter.Body.setVelocity(ballRef.current, { x: 0, y: 0 });
-      Matter.Body.setAngularVelocity(ballRef.current, 0);
-    }
+    // if (ballRef.current && wallBottom && ballRef.current.position.y > wallBottom.bounds.max.y - threshold) {
+    //   Matter.Body.setPosition(ballRef.current, initialBallPositionRef.current);
+    //   Matter.Body.setVelocity(ballRef.current, { x: 0, y: 0 });
+    //   Matter.Body.setAngularVelocity(ballRef.current, 0);
+    // }
 
     // 사용자 드로잉 오브젝트 투명도 감소
     Matter.Composite.allBodies(world).forEach(body => {
@@ -1076,7 +1093,7 @@ const createPhysicsBody = (
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool === 'pin' && currentLevel === 11) {
-      // 핀 툴 모드인데 스테이지10이면 그냥 무시
+      // 핀 툴 모드인데 스테이지11이면 그냥 무시
       return;
     }
 
