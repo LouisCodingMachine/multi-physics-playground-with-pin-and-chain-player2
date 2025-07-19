@@ -30,7 +30,7 @@ declare module 'matter-js' {
     collideConnected?: boolean;
   }
 }
-const TOTAL_LEVELS = 20; // 총 스테이지 수를 정의합니다.
+const TOTAL_LEVELS = 30; // 총 스테이지 수를 정의합니다.
 interface PhysicsCanvasProps {
   isPlayerOne: boolean;
 }
@@ -69,7 +69,20 @@ const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({ isPlayerOne }) => {
   const CURSOR_LIFETIME = 2000; // 2초
   
   const initialBallPositionRef = useRef({ x: 0, y: 0 }); // 공 초기 위치 저장
-  
+  const initialObstaclesRef = useRef<
+    { body: Matter.Body; position: Matter.Vector; angle: number }[]
+  >([]);
+  // 컴포넌트 최상단에 선언
+const isToolForbidden = (
+  tool: 'pen' | 'eraser' | 'pin' | 'chain' | 'push',
+  level: number
+) => {
+  if ((tool === 'pen' || tool === 'eraser') && [4,5,6,12].includes(level)) return true;
+  if (tool === 'pin'   && [4,5,6,7,8,9,11].includes(level)) return true;
+  if (tool === 'push'  && [7,8,9,10,11].includes(level))  return true;
+  return false;
+};
+
   const mapObjects = ['ground', 'tower1', 'tower2', 'tower3', 'tower4', 'tower5', 'base', 'pedestal', 'top_bar', 'vertical_bar', 'red_box', 'left_up_green_platform', 'left_down_green_platform', 'right_up_green_platform', 'right_down_green_platform', 'left_red_wall', 'right_red_wall', 'bottom_red_wall', 'red_platform', 'green_ramp', 'central_obstacle', 'wall_bottom', 'wall_top', 'wall_left', 'wall_right', 'horizontal_platform', 'frame_top', 'frame_left', 'frame_right', 'horizontal_down_platform', 'pillar1', 'pillar2', 'pillar3', 'rounded_slope', 'horizontal_down_platform', 'horizontal_up_platform', 'nail4_0', 'nail4_1', 'nail4_2', 'nail8_0', 'horizontalPlatformForBall', 'horizontalPlatform', 'slope', 'horizontalPlatformForStar', 'cloud', 'scoop', 'obstacle', 'floor', 'Ishape', 'upperrectangle', 't_shape', 'nail7_0', 'nail7_1'];
   const staticObjects = ['wall', 'ball', 'balloon','lever'].concat(mapObjects);
   const ballRef = useRef<Matter.Body | null>(null);
@@ -83,7 +96,7 @@ const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({ isPlayerOne }) => {
   // 못(nail)들을 저장하는 상태
   const [nails, setNails] = useState<Matter.Body[]>([]);
   const nailsRef = useRef<Matter.Body[]>([]);
-
+  
   // nail 추가 함수
   // const addNail = (nail: Matter.Body) => {
   //   nailsRef.current = [...nailsRef.current, nail];
@@ -291,7 +304,7 @@ useEffect(() => {
     centerY?: number;
     // 기존 points (다각형용)
     points: Matter.Vector[];
-    ensity: number;
+    density: number;
   }) => {
     if (data.playerId === p1) return
     // ─── Level 6 전용: centerX/Y 로 사각형 그리기 ───
@@ -458,6 +471,7 @@ useEffect(() => {
           length: 0,
           stiffness: 1,
           render: { visible: true },
+          label: "constraint_Tshape"
         });
         Matter.Composite.add(engineRef.current.world, pivot);
       }
@@ -695,6 +709,15 @@ useEffect(() => {
   const factory = levelFactories[currentLevel];
   if (factory) {
     const bodies = factory(world);
+
+    initialObstaclesRef.current = bodies
+  .filter(b => b.label === 'obstacle')
+  .map(b => ({
+    body: b,
+    position: { x: b.position.x, y: b.position.y },
+    angle: b.angle,
+  }));
+
     bodies.forEach(body => {
       if (body.label.startsWith('nail')) addNail(body);
       if (body.label === 'ball') {
@@ -713,6 +736,22 @@ useEffect(() => {
       }
     }
   }
+const resetBallAndObstacles = () => {
+  // 공 리셋
+  if (ballRef.current) {
+    Matter.Body.setPosition(ballRef.current, initialBallPositionRef.current);
+    Matter.Body.setVelocity(ballRef.current, { x: 0, y: 0 });
+    Matter.Body.setAngularVelocity(ballRef.current, 0);
+  }
+  // 장애물 리셋
+  initialObstaclesRef.current.forEach(({ body, position, angle }) => {
+    Matter.Body.setPosition(body, position);
+    Matter.Body.setVelocity(body, { x: 0, y: 0 });
+    Matter.Body.setAngularVelocity(body, 0);
+    Matter.Body.setAngle(body, angle);
+  });
+};
+
 
   // collisionStart 핸들러
   const handleCollisionStart = (event: Matter.IEventCollision<Engine>) => {
@@ -721,17 +760,26 @@ useEffect(() => {
       const b = pair.bodyB.label;
 
       // 레벨 클리어
-      if ((a === 'ball' && b === 'balloon') || (a === 'balloon' && b === 'ball')) {
+      if ((a === 'ball' && b === 'balloon')) {
         setGameEnded(true);
 
       // 장애물과 충돌 시 레벨별 1초 뒤 리셋
-      } else if ((a === 'ball' && b === 'obstacle') || (a === 'obstacle' && b === 'ball')) {
+      } else if ((a === 'ball' && b === 'obstacle')) {
         const scheduledLvl = currentLevelRef.current;
+        
         setTimeout(() => {
           // 사용자가 이미 다른 레벨로 이동했으면 무시
-          if (currentLevelRef.current !== scheduledLvl) return;
-          if (scheduledLvl === 5 || scheduledLvl === 6) {
-            resetLevel();
+          if (currentLevelRef.current !== 5) return;
+          if (scheduledLvl === 5) {
+            resetBallAndObstacles();
+          }
+        }, 1000);
+
+        setTimeout(() => {
+          // 사용자가 이미 다른 레벨로 이동했으면 무시
+          if (currentLevelRef.current !== 6) return;
+          if (scheduledLvl === 6) {
+            resetBallAndObstacles();
           }
         }, 1000);
       }
@@ -1188,9 +1236,9 @@ const createPhysicsBody = (
       // 공의 중심에서 클릭한 위치까지의 거리 계산
       const clickOffsetX = point.x - ballX;
 
-      let force = clickOffsetX < 0 ? { x: 0.008, y: 0 } : { x: -0.008, y: 0 };
+      let force = clickOffsetX < 0 ? { x: 0.007, y: 0 } : { x: -0.007, y: 0 };
       if(currentLevelRef.current === 12) {
-        force = clickOffsetX < 0 ? { x: 0.04911, y: 0 } : { x: -0.04911, y: 0 };
+        force = clickOffsetX < 0 ? { x: 0.04311, y: 0 } : { x: -0.04311, y: 0 };
       }
 
       // 서버에 힘 적용 요청 전송
@@ -1230,35 +1278,35 @@ const createPhysicsBody = (
       y: Math.max(0, Math.min(point.y, rect.height)), 
     };
   
-    // 벽과의 충돌 감지
-    const bodies = currentLevelRef.current === 5 ? Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point) : currentLevelRef.current === 6 ? Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point) : Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point)
-    const collidedWall = bodies.find(body => body.label === 'wall');
-    // console.log("collidedWall: ", collidedWall)
+    // // 벽과의 충돌 감지
+    // const bodies = currentLevelRef.current === 5 ? Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point) : currentLevelRef.current === 6 ? Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point) : Matter.Query.point(Matter.Composite.allBodies(engineRef.current.world), point)
+    // const collidedWall = bodies.find(body => body.label === 'wall');
+    // // console.log("collidedWall: ", collidedWall)
   
-    if (collidedWall) {
-      // 충돌한 벽의 경계 찾기
-      const bounds = collidedWall.bounds;
+    // if (collidedWall) {
+    //   // 충돌한 벽의 경계 찾기
+    //   const bounds = collidedWall.bounds;
   
-      // 벽의 각 변과 점 사이의 거리 계산
-      const distances = [
-        Math.abs(point.x - bounds.min.x), // 왼쪽 변
-        Math.abs(point.x - bounds.max.x), // 오른쪽 변
-        Math.abs(point.y - bounds.min.y), // 위쪽 변
-        Math.abs(point.y - bounds.max.y), // 아래쪽 변
-      ];
+    //   // 벽의 각 변과 점 사이의 거리 계산
+    //   const distances = [
+    //     Math.abs(point.x - bounds.min.x), // 왼쪽 변
+    //     Math.abs(point.x - bounds.max.x), // 오른쪽 변
+    //     Math.abs(point.y - bounds.min.y), // 위쪽 변
+    //     Math.abs(point.y - bounds.max.y), // 아래쪽 변
+    //   ];
   
-      // 가장 가까운 변 찾기
-      const minDistance = Math.min(...distances);
-      // console.log("minDistance: ", minDistance)
-      const threshold = 5; // 벽과의 거리 임계값
+    //   // 가장 가까운 변 찾기
+    //   const minDistance = Math.min(...distances);
+    //   // console.log("minDistance: ", minDistance)
+    //   const threshold = 5; // 벽과의 거리 임계값
   
-      if (minDistance < threshold) {
-      if (distances[0] === minDistance) point.x = bounds.min.x; // 왼쪽 변
-      else if (distances[1] === minDistance) point.x = bounds.max.x; // 오른쪽 변
-      else if (distances[2] === minDistance) point.y = bounds.min.y; // 위쪽 변
-      else if (distances[3] === minDistance) point.y = bounds.max.y; // 아래쪽 변
-      }
-    }
+    //   if (minDistance < threshold) {
+    //   if (distances[0] === minDistance) point.x = bounds.min.x; // 왼쪽 변
+    //   else if (distances[1] === minDistance) point.x = bounds.max.x; // 오른쪽 변
+    //   else if (distances[2] === minDistance) point.y = bounds.min.y; // 위쪽 변
+    //   else if (distances[3] === minDistance) point.y = bounds.max.y; // 아래쪽 변
+    //   }
+    // }
   
     const lastPoint = drawPoints[drawPoints.length - 1];
     // console.log("lastPoint: ", lastPoint)
@@ -1321,6 +1369,21 @@ const createPhysicsBody = (
 
   // ── 2) 펜 툴 전용 처리 ──
   if (tool === 'pen' && currentTurn === p1) {
+    // 그리기 영역의 최소 폭/높이
+    const xs = drawPoints.map(p => p.x);
+    const ys = drawPoints.map(p => p.y);
+    const width  = Math.max(...xs) - Math.min(...xs);
+    const height = Math.max(...ys) - Math.min(...ys);
+
+    const RATIO_THRESHOLD = 0.2;
+    const ratio = Math.min(width, height) / Math.max(width, height);
+
+    if (ratio < RATIO_THRESHOLD) {
+      // 너무 얇아서 물체 생성 안 함
+      setIsDrawing(false);
+      setDrawPoints([]);
+      return;
+    }
     // Level 6/18 전용: 80×80 사각형만
     if (currentLevel === 8 || currentLevel === 20 || currentLevelRef.current === 9 || currentLevelRef.current === 10) {
       const cx = drawPoints.length
@@ -1412,9 +1475,9 @@ const createPhysicsBody = (
 
 
   const handleToolChange = (newTool: 'pen' | 'eraser' | 'pin' | 'chain' | 'push') => {
-    if (currentLevel === 11 && newTool === 'pin') {
-    return; // 스테이지 10에선 pin 선택 불가
-  }
+    // 레벨별 금지 툴이면 무시
+    if (isToolForbidden(newTool, currentLevel)) return;
+    // 차례가 아니면 무시
     if (currentTurn === p2) return;
     setTool(newTool);
     setIsDrawing(false);
@@ -1538,73 +1601,65 @@ const createPhysicsBody = (
     console.log("All Bodies:", allBodies);
   };
 
+  const rows = Math.ceil(TOTAL_LEVELS / 10);
   return (
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-2">
         {/* <Timer startTimer={startTimer} onFinish={handleTimerFinish} /> */}
         {/* 스테이지 상태 (1 ~ 10까지 예시) */}
         {/* 스테이지 상태 */}
-      <div className="mt-4 p-4 border border-gray-300 rounded overflow-x-auto">
-        <h3 className="text-lg font-bold mb-2">스테이지 상태</h3>
-        <div className="flex flex-col gap-4">
-          
-          {/* 1~10 */}
-          <table className="min-w-full table-auto border-collapse">
-            <thead>
-              <tr>
-                <th className="border p-2">스테이지</th>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(level => (
-                  <th key={level} className="border p-2 text-center">{level}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th className="border p-2">상태</th>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(level => {
-                  const isCleared = completedLevels.includes(level);
-                  return (
-                    <td
-                      key={level}
-                      className={`border p-2 text-center font-bold text-white ${isCleared ? 'bg-green-500' : 'bg-red-500'}`}
-                    >
-                      {isCleared ? '완료' : '미완료'}
-                    </td>
-                  );
-                })}
-              </tr>
-            </tbody>
-          </table>
-
-          {/* 11~20 */}
-          <table className="min-w-full table-auto border-collapse">
-            <thead>
-              <tr>
-                <th className="border p-2">스테이지</th>
-                {Array.from({ length: 10 }, (_, i) => i + 11).map(level => (
-                  <th key={level} className="border p-2 text-center">{level}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th className="border p-2">상태</th>
-                {Array.from({ length: 10 }, (_, i) => i + 11).map(level => {
-                  const isCleared = completedLevels.includes(level);
-                  return (
-                    <td
-                      key={level}
-                      className={`border p-2 text-center font-bold text-white ${isCleared ? 'bg-green-500' : 'bg-red-500'}`}
-                    >
-                      {isCleared ? '완료' : '미완료'}
-                    </td>
-                  );
-                })}
-              </tr>
-            </tbody>
-          </table>
-
-        </div>
+      {/* 스테이지 상태 */}
+     <div className="mt-2 p-2 border border-gray-300 rounded overflow-x-auto">
+      <h3 className="text-lg font-bold mb-2">스테이지 상태</h3>
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: rows }).map((_, rowIndex) => {
+          const base = rowIndex * 10; // 0, 10, 20 …
+          return (
+            <table
+              key={rowIndex}
+              className="w-full table-fixed border-collapse"
+            >
+              <thead>
+                <tr>
+                  <th className="border p-1">스테이지</th>
+                  {Array.from({ length: 10 }).map((__, i) => {
+                    const lv = base + i + 1;
+                    return (
+                      <th key={i} className="border p-1 text-center">
+                        {lv <= TOTAL_LEVELS ? lv : ''}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th className="border p-1">상태</th>
+                  {Array.from({ length: 10 }).map((__, i) => {
+                    const lv = base + i + 1;
+                    if (lv <= TOTAL_LEVELS) {
+                      const cleared = completedLevels.includes(lv);
+                      return (
+                        <td
+                          key={i}
+                          className={`border p-1 text-center font-bold text-white ${
+                            cleared ? 'bg-green-500' : 'bg-red-500'
+                          }`}
+                        >
+                          {cleared ? '완료' : '미완료'}
+                        </td>
+                      );
+                    } else {
+                      return <td key={i} className="border p-1">&nbsp;</td>;
+                    }
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          );
+        })}
       </div>
+    </div>
+
 
         <div className="flex gap-4 mb-4">
           {/* <div>
@@ -1707,7 +1762,7 @@ const createPhysicsBody = (
             className={`relative
               p-2 rounded
               ${tool === 'push' ? 'bg-blue-500 text-white' : 'bg-gray-200'}
-              ${(currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10)? 'opacity-50 cursor-not-allowed' : ''}
+              ${(currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 11)? 'opacity-50 cursor-not-allowed' : ''}
             `}
             style={{
               display: 'flex',
@@ -1721,7 +1776,7 @@ const createPhysicsBody = (
             <Circle size={20} style={{ position: 'absolute', left: '6px', zIndex: 1 }} />
             {/* 손이 약간 겹치도록 배치 */}
             <Hand size={22} style={{ position: 'relative', left: '8px', zIndex: 2, transform: 'rotate(-20deg)' }} />
-            {(currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10) && (
+            {(currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 11) && (
                 <X
                   size={48}
                   className="absolute inset-0 m-auto text-red-500 pointer-events-none"

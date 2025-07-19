@@ -101,7 +101,7 @@ export const createLevel7: LevelFactory = (world) => {
   });
 
   // 10) 별 생성
-  const star = Matter.Bodies.trapezoid(700, 500, 20, 20, 1, {
+  const star = Matter.Bodies.trapezoid(630, 500, 20, 20, 1, {
     isStatic: true,
     label: 'balloon',
     render: { fillStyle: '#fbbf24' },
@@ -113,7 +113,7 @@ export const createLevel7: LevelFactory = (world) => {
   const lowerRightBox = Matter.Bodies.rectangle(750, 350, 20, 150, { isStatic: true, label: 'lower_right_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
   const lowerLeftBox  = Matter.Bodies.rectangle(650, 425, 20, 80, { isStatic: true, label: 'lower_left_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
   const upperLeftBox  = Matter.Bodies.rectangle(620, 385, 80, 20, { isStatic: true, label: 'upper_left_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
-  const bottomBox     = Matter.Bodies.rectangle(700, 520, 180, 20, { isStatic: true, label: 'bottom_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
+  const bottomBox     = Matter.Bodies.rectangle(630, 520, 100, 20, { isStatic: true, label: 'bottom_box', render: { fillStyle: '#10b981' }, collisionFilter: { category: 0x0001, mask: 0xFFFF } });
 
   // 월드에 바디 추가
   Matter.World.add(world, [

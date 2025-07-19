@@ -21,10 +21,16 @@ import { createLevel17 } from './level17';
 import { createLevel18 } from './level18';
 import { createLevel19 } from './level19';
 import { createLevel20 } from './level20';
-// import { createLevel20 } from './level21';
-// import { createLevel20 } from './level22';
-// import { createLevel20 } from './level23';
-// import { createLevel20 } from './level24';
+import { createLevel21 } from './level21';
+import { createLevel22 } from './level22';
+import { createLevel23 } from './level23';
+import { createLevel24 } from './level24';
+import { createLevel25 } from './level25';
+import { createLevel26 } from './level26';
+import { createLevel27 } from './level27';
+import { createLevel28 } from './level28';
+import { createLevel29 } from './level29';
+import { createLevel30 } from './level30';
 
 export const levelFactories: Record<number, LevelFactory> = {
   1: createLevel1,
@@ -47,8 +53,14 @@ export const levelFactories: Record<number, LevelFactory> = {
   18: createLevel18,
   19: createLevel19,
   20: createLevel20,
-  // 21: createLevel21,
-  // 22: createLevel22,
-  // 23: createLevel23,
-  // 24: createLevel24,
+  21: createLevel21,
+  22: createLevel22,
+  23: createLevel23,
+  24: createLevel24,
+  25: createLevel25,
+  26: createLevel26,
+  27: createLevel27,
+  28: createLevel28,
+  29: createLevel29,
+  30: createLevel30,
 };

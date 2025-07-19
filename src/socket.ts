@@ -2,7 +2,7 @@
 import { io, Socket } from 'socket.io-client';
 
 const SOCKET_URL = 'http://localhost:3001';
-// const SOCKET_URL = 'http://ec2-3-36-76-124.ap-northeast-2.compute.amazonaws.com:3001';
+// const SOCKET_URL = 'http://ec2-43-203-192-127.ap-northeast-2.compute.amazonaws.com:3001';
 // 
 // Singleton 패턴으로 소켓 인스턴스 생성
 export const socket: Socket = io(SOCKET_URL, {
