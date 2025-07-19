@@ -45,14 +45,14 @@ export const createLevel24: LevelFactory = (world) => {
   );
 
   const leftPlatform = Matter.Bodies.rectangle(
-      100, 120, 60, 30,
-      {
-        isStatic: true,
-        label: 'right_down_green_platform',
-        render: { fillStyle: '#10b981' },
-        collisionFilter: { category: 0x0001, mask: 0xFFFF },
-      }
-    );
+    100, 120, 60, 30,
+    {
+      isStatic: true,
+      label: 'right_down_green_platform',
+      render: { fillStyle: '#10b981' },
+      collisionFilter: { category: 0x0001, mask: 0xFFFF },
+    }
+  );
 
   const middlePlatform = Matter.Bodies.rectangle(
     350, 150, 60, 30,

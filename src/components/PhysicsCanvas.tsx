@@ -488,41 +488,42 @@ useEffect(() => {
         Matter.Composite.remove(engineRef.current.world, nailTshape);
         Matter.Composite.remove(engineRef.current.world, constraintTshape);
       }
+      addNail(nail);
     } else {
       Matter.Composite.add(engineRef.current.world, nail);
+      addNail(nail);
+
+      // 3) Constraint로 고정
+      const constraint = Matter.Constraint.create({
+        bodyA: targetBody,
+        pointA: {
+          x: data.centerX - targetBody.position.x,
+          y: data.centerY - targetBody.position.y,
+        },
+        bodyB: nail,
+        pointB: { x: 0, y: 0 },
+        length: 0,
+        stiffness: 1,
+        render: { visible: true },
+        collideConnected: false,
+        // label: currentLevelRef.current === 10 && targetBody.label === 'lever' ? 'leverPivot' : currentLevelRef.current === 18 && targetBody.label === 'Tshape' ? 'constraint_Tshape' : '',
+        // label: (currentLevelRef.current === 18 && targetBody.label === 'Tshape') ? 'constraint_Tshape' : '',
+      });
+      Matter.Composite.add(engineRef.current.world, constraint);
+      console.log("constraint: ", constraint);
+  // 3) 연결된 모든 body 수집 → nail과 targetBody 모두 시작점으로
+      const allConnected = new Set<Matter.Body>();
+      const world = engineRef.current.world;
+      collectConnectedBodies(nail, world)
+        .forEach(b => allConnected.add(b));
+      collectConnectedBodies(targetBody, world)
+        .forEach(b => allConnected.add(b));
+
+      // 4) 공통 category 결정 (targetBody 기준)
+      const commonCat = targetBody.collisionFilter.category ?? 0x0001;
+      // 5) 전파
+      propagateCategory(commonCat, Array.from(allConnected));
     }
-    addNail(nail);
-
-    // 3) Constraint로 고정
-    const constraint = Matter.Constraint.create({
-      bodyA: targetBody,
-      pointA: {
-        x: data.centerX - targetBody.position.x,
-        y: data.centerY - targetBody.position.y,
-      },
-      bodyB: nail,
-      pointB: { x: 0, y: 0 },
-      length: 0,
-      stiffness: 1,
-      render: { visible: true },
-      collideConnected: false,
-      // label: currentLevelRef.current === 10 && targetBody.label === 'lever' ? 'leverPivot' : currentLevelRef.current === 18 && targetBody.label === 'Tshape' ? 'constraint_Tshape' : '',
-      label: currentLevelRef.current === 18 && targetBody.label === 'Tshape' ? 'constraint_Tshape' : '',
-    });
-    Matter.Composite.add(engineRef.current.world, constraint);
-    console.log("constraint: ", constraint);
-// 3) 연결된 모든 body 수집 → nail과 targetBody 모두 시작점으로
-    const allConnected = new Set<Matter.Body>();
-    const world = engineRef.current.world;
-    collectConnectedBodies(nail, world)
-      .forEach(b => allConnected.add(b));
-    collectConnectedBodies(targetBody, world)
-      .forEach(b => allConnected.add(b));
-
-    // 4) 공통 category 결정 (targetBody 기준)
-    const commonCat = targetBody.collisionFilter.category ?? 0x0001;
-    // 5) 전파
-    propagateCategory(commonCat, Array.from(allConnected));
   };
   socket.on('drawPin', handleDrawPin);
   return () => {
@@ -534,7 +535,7 @@ useEffect(() => {
     socket.on('resetLevel', (data: { level: number }) => {
       console.log(`Resetting level to: ${data.level}`);
       
-              // 월드와 렌더를 정지하고 지운 후, 다시 설정
+        // 월드와 렌더를 정지하고 지운 후, 다시 설정
         const world = engineRef.current.world;
         Matter.World.clear(world, false);
         Matter.Engine.clear(engineRef.current);
@@ -1859,7 +1860,7 @@ const createPhysicsBody = (
     </>
   )}
 
-          {currentLevelRef.current === 9 || currentLevelRef.current === 10 && (
+          {(currentLevelRef.current === 9 || currentLevelRef.current === 10) && (
             <button
               onClick={resetLevel}
               className="relative p-2 rounded bg-gray-200"
