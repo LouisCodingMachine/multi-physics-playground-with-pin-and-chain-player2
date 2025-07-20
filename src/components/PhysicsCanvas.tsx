@@ -1262,7 +1262,7 @@ const createPhysicsBody = (
 
       let force = clickOffsetX < 0 ? { x: 0.007, y: 0 } : { x: -0.007, y: 0 };
       if(currentLevelRef.current === 12) {
-        force = clickOffsetX < 0 ? { x: 0.04311, y: 0 } : { x: -0.04311, y: 0 };
+        force = clickOffsetX < 0 ? { x: 0.0538, y: 0 } : { x: -0.0538, y: 0 };
       }
 
       // 서버에 힘 적용 요청 전송
