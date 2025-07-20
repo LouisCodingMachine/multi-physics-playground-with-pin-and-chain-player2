@@ -1263,6 +1263,7 @@ const createPhysicsBody = (
       let force = clickOffsetX < 0 ? { x: 0.007, y: 0 } : { x: -0.007, y: 0 };
       if(currentLevelRef.current === 12) {
         force = clickOffsetX < 0 ? { x: 0.0538, y: 0 } : { x: -0.0538, y: 0 };
+        // force = clickOffsetX < 0 ? { x: 0.05455, y: 0 } : { x: -0.05455, y: 0 };
       }
 
       // 서버에 힘 적용 요청 전송
@@ -1642,6 +1643,17 @@ const createPhysicsBody = (
         {/* <Timer startTimer={startTimer} onFinish={handleTimerFinish} /> */}
         {/* 스테이지 상태 (1 ~ 10까지 예시) */}
         {/* 스테이지 상태 */}
+      <h1 className="w-full text-2xl font-bold mb-4 text-center">
+  스테이지를 깰 때 물체를{' '}
+  <span className="text-red-500 font-bold">가장 적게</span>{' '}
+  사용하여 해결할수록{' '}
+  <span className="text-red-500 font-bold">높은 점수</span>가 주어집니다.
+  <br />
+  <span className="block text-2xl mt-1">
+    (*물체에 핀은 포함이고 지우개와 밀기 해당 안됨)
+  </span>
+</h1>
+
       {/* 스테이지 상태 */}
      <div className="mt-2 p-2 border border-gray-300 rounded overflow-x-auto">
       <h3 className="text-lg font-bold mb-2">스테이지 상태</h3>
