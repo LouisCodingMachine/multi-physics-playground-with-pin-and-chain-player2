@@ -72,7 +72,7 @@ export const createLevel4: LevelFactory = (world) => {
   const ground2 = Matter.Bodies.rectangle(
     780,   // X: 오른쪽
     580,   // Y: 아래
-    125,   // 너비
+    135,   // 너비
     150,   // 두께
     {
       isStatic: true,
