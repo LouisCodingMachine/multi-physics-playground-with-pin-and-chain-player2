@@ -37,6 +37,7 @@ interface PhysicsCanvasProps {
 // 맵이 변할 때 마다 실행됨.
 
 const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({ isPlayerOne }) => {
+  const [popupMessage, setPopupMessage] = useState<string | null>(null);
   // 여기서 p1/p2 를 결정
   const p1 = isPlayerOne ? 'player1' : 'player2';
   const p2 = isPlayerOne ? 'player2' : 'player1';
@@ -72,6 +73,7 @@ const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({ isPlayerOne }) => {
   const initialObstaclesRef = useRef<
     { body: Matter.Body; position: Matter.Vector; angle: number }[]
   >([]);
+  const [pushTimer, setPushTimer] = useState<number>(0);
   // 컴포넌트 최상단에 선언
 const isToolForbidden = (
   tool: 'pen' | 'eraser' | 'pin' | 'chain' | 'push',
@@ -133,6 +135,22 @@ const isToolForbidden = (
       });
     }
   }, [gameEnded])
+
+  useEffect(() => {
+  const handlePush = (data: { force: { x: number; y: number }; playerId: string }) => {
+    if (!ballRef.current || pushLock) return;
+    Matter.Body.applyForce(ballRef.current, ballRef.current.position, data.force);
+    setPushTimer(5);
+    // 필요하다면 여기서 setPushLock(true) 등 추가
+  };
+  socket.on('push', handlePush);
+  return () => {
+    socket.off('push', handlePush);
+  };
+}, [socket, pushLock]);
+
+
+
 useEffect(() => {
   const handler = (data: {
     level: number;
@@ -611,24 +629,29 @@ function getSupportPositions(fulcrumX: number, fulcrumY: number) {
     support3: { x: s3x, y: s3y }
   }
 }
+useEffect(() => {
+  if (pushTimer > 0) {
+    const id = setTimeout(() => setPushTimer(pushTimer - 1), 1000);
+    return () => clearTimeout(id);
+  }
+}, [pushTimer]);
 
-
-  useEffect(() => {
-    socket.on('push', (data: { force: { x: number; y: number }; playerId: string }) => {
-      console.log("safdsdf");
-      if (ballRef.current && !pushLock) {
-        const ball = ballRef.current;
-        console.log("data.force: ", data.force);
-        Matter.Body.applyForce(ball, ball.position, data.force);
+  // useEffect(() => {
+  //   socket.on('push', (data: { force: { x: number; y: number }; playerId: string }) => {
+  //     console.log("safdsdf");
+  //     if (ballRef.current && !pushLock) {
+  //       const ball = ballRef.current;
+  //       console.log("data.force: ", data.force);
+  //       Matter.Body.applyForce(ball, ball.position, data.force);
         
-        // setPushLock(true);
-      }
-    });
+  //       // setPushLock(true);
+  //     }
+  //   });
   
-    return () => {
-      socket.off('push');
-    };
-  }, []);
+  //   return () => {
+  //     socket.off('push');
+  //   };
+  // }, []);
 
   useEffect(() => {
     socket.on('changeTool', (data: { tool: 'pen' | 'eraser' | 'pin' | 'chain' | 'push'; playerId: string }) => {
@@ -1099,11 +1122,49 @@ const createPhysicsBody = (
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool === 'push' && pushTimer > 0) {
+      showPopup(`밀기 대기 중: ${pushTimer}초 남음`);
+      return;
+    }
+  // ——— 그 밖에도 필요하면 드로잉 잠금 체크 ———
+    if ((tool === 'pen' || tool === 'eraser') && drawLock) {
+      return;
+    }
     if (tool === 'pin' && currentLevel === 11) {
       // 핀 툴 모드인데 스테이지11이면 그냥 무시
       return;
     }
+    if (tool === 'pin' && currentTurn === p1) {
+        const rect = canvasRef.current!.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
+        // — 대상 바디 찾기 —
+        const bodies = Matter.Composite.allBodies(engineRef.current.world);
+        const targetBody = bodies.find(b =>
+          Matter.Bounds.contains(b.bounds, { x, y })
+        );
+        // 공(ball)에는 핀 못 찍게 금지
+        if (targetBody?.label === 'ball') {
+          return;
+        }
+
+        const FIXED_RADIUS = 10;
+        const customId = `nail_${Date.now()}`;
+        // 서버에 못 생성 요청
+        socket.emit('drawPin', {
+          customId,
+          centerX: x,
+          centerY: y,
+          radius: FIXED_RADIUS,
+          category: 0x0002,    // 기존 nail 카테고리
+          groupNumber: 0,      // 필요에 따라 조정
+          playerId: p1,
+          currentLevel,
+        });
+        socket.emit('changeTurn', { nextPlayerId: p2, currentLevel });
+        return;
+      }
     let rect;
     
       if(!canvasRef.current) return;
@@ -1242,6 +1303,7 @@ const createPhysicsBody = (
     if (tool === 'push' && ballRef.current) {
       // push 남용 방지
       // setPushLock(true);
+      if (pushTimer > 0) return;
       if(currentTurn === p2) return;
       
       const logInfo: LogInfo = {
@@ -1262,7 +1324,7 @@ const createPhysicsBody = (
 
       let force = clickOffsetX < 0 ? { x: 0.007, y: 0 } : { x: -0.007, y: 0 };
       if(currentLevelRef.current === 12) {
-        force = clickOffsetX < 0 ? { x: 0.0538, y: 0 } : { x: -0.0538, y: 0 };
+        force = clickOffsetX < 0 ? { x: 0.0477, y: 0 } : { x: -0.0477, y: 0 };
         // force = clickOffsetX < 0 ? { x: 0.05455, y: 0 } : { x: -0.05455, y: 0 };
       }
 
@@ -1272,6 +1334,8 @@ const createPhysicsBody = (
         playerId: p1,
         currentLevel
       });
+
+      setPushTimer(5);
     }
 
     if(currentTurn === p1) {
@@ -1347,61 +1411,62 @@ const createPhysicsBody = (
     return;
   }
   // ── 1) 핀 툴 전용 처리 ──
-  if (tool === 'pin' && currentTurn === p1) {
-    if (drawPoints.length < 2) {
-      setIsDrawing(false);
-      setDrawPoints([]);
-      return;
-    }
+  // if (tool === 'pin' && currentTurn === p1) {
+  //   if (drawPoints.length < 2) {
+  //     setDrawLock(false);
+  //     setIsDrawing(false);
+  //     setDrawPoints([]);
+  //     return;
+  //   }
 
-    // 중심과 반지름 계산
-    const cx = drawPoints.reduce((sum, p) => sum + p.x, 0) / drawPoints.length;
-    const cy = drawPoints.reduce((sum, p) => sum + p.y, 0) / drawPoints.length;
-    const radius = Math.max(
-      ...drawPoints.map(p => Math.hypot(p.x - cx, p.y - cy))
-    );
+  //   // 중심과 반지름 계산
+  //   const cx = drawPoints.reduce((sum, p) => sum + p.x, 0) / drawPoints.length;
+  //   const cy = drawPoints.reduce((sum, p) => sum + p.y, 0) / drawPoints.length;
+  //   const radius = Math.max(
+  //     ...drawPoints.map(p => Math.hypot(p.x - cx, p.y - cy))
+  //   );
 
-    // 1) 로컬에 nail 한 번만 추가
-    const customId = `nail_${Date.now()}`;
-    const nail = Matter.Bodies.circle(cx, cy, radius, {
-      isStatic: true,
-      collisionFilter: { group: 0, category: 0x0100, mask: 0xFFFF },
-      render: { fillStyle: 'rgba(0,0,0,0)', strokeStyle: '#ef4444', lineWidth: 2 },
-      label: customId,
-    });
-    // Matter.World.add(engineRef.current.world, nail);
-    // addNail(nail);
+  //   // 1) 로컬에 nail 한 번만 추가
+  //   const customId = `nail_${Date.now()}`;
+  //   const nail = Matter.Bodies.circle(cx, cy, radius, {
+  //     isStatic: true,
+  //     collisionFilter: { group: 0, category: 0x0100, mask: 0xFFFF },
+  //     render: { fillStyle: 'rgba(0,0,0,0)', strokeStyle: '#ef4444', lineWidth: 2 },
+  //     label: customId,
+  //   });
+  //   // Matter.World.add(engineRef.current.world, nail);
+  //   // addNail(nail);
 
-    // 2) 서버에 drawPin 이벤트 전송
+  //   // 2) 서버에 drawPin 이벤트 전송
 
-    const mousePosition = { x: cx, y: cy };
-    const bodies = Matter.Composite.allBodies(engineRef.current.world);
-    const targetBody = bodies.find(body =>
-      Matter.Bounds.contains(body.bounds, mousePosition)
-    );
-    if (!targetBody) {
-      console.log("No body found under nail position.");
-      return;
-    }
+  //   const mousePosition = { x: cx, y: cy };
+  //   const bodies = Matter.Composite.allBodies(engineRef.current.world);
+  //   const targetBody = bodies.find(body =>
+  //     Matter.Bounds.contains(body.bounds, mousePosition)
+  //   );
+  //   if (!targetBody) {
+  //     console.log("No body found under nail position.");
+  //     return;
+  //   }
     
-    socket.emit('drawPin', {
-      customId,
-      centerX: cx,
-      centerY: cy,
-      radius,
-      category: nail.collisionFilter.category,
-      groupNumber: nail.collisionFilter.group,
-      mask: nail.collisionFilter.mask,
-      playerId: p1,
-      currentLevel,
-    });
-    socket.emit('changeTurn', { nextPlayerId: p2, currentLevel });
+  //   socket.emit('drawPin', {
+  //     customId,
+  //     centerX: cx,
+  //     centerY: cy,
+  //     radius,
+  //     category: nail.collisionFilter.category,
+  //     groupNumber: nail.collisionFilter.group,
+  //     mask: nail.collisionFilter.mask,
+  //     playerId: p1,
+  //     currentLevel,
+  //   });
+  //   socket.emit('changeTurn', { nextPlayerId: p2, currentLevel });
 
-    // 상태 초기화
-    setIsDrawing(false);
-    setDrawPoints([]);
-    return;
-  }
+  //   // 상태 초기화
+  //   setIsDrawing(false);
+  //   setDrawPoints([]);
+  //   return;
+  // }
 
   // ── 2) 펜 툴 전용 처리 ──
   if (tool === 'pen' && currentTurn === p1) {
@@ -1512,9 +1577,15 @@ const createPhysicsBody = (
 
   const handleToolChange = (newTool: 'pen' | 'eraser' | 'pin' | 'chain' | 'push') => {
     // 레벨별 금지 툴이면 무시
-    if (isToolForbidden(newTool, currentLevel)) return;
+    if (isToolForbidden(newTool, currentLevel)) {
+      showPopup('이 레벨에서는 이 도구를 사용할 수 없습니다.');
+      return;
+  }
     // 차례가 아니면 무시
-    if (currentTurn === p2) return;
+    if (currentTurn === p2) {
+    showPopup('지금은 차례가 아닙니다.');
+    return;
+  }
     setTool(newTool);
     setIsDrawing(false);
     setDrawPoints([]);
@@ -1637,9 +1708,22 @@ const createPhysicsBody = (
     console.log("All Bodies:", allBodies);
   };
 
+  const disabledByLevel = [7,8,9,10,11].includes(currentLevel);
+  const disabledByTimer = pushTimer > 0;
+
   const rows = Math.ceil(TOTAL_LEVELS / 10);
+  const showPopup = (msg: string) => {
+    setPopupMessage(msg);
+    clearTimeout((window as any)._popupTimeout);
+    (window as any)._popupTimeout = setTimeout(() => setPopupMessage(null), 2000);
+  };
   return (
-      <div className="flex flex-col items-center gap-2">
+      <div className="relative flex flex-col items-center gap-2">
+        {popupMessage && (
+      <div className="absolute top-4 bg-black bg-opacity-75 text-white px-4 py-2 rounded-md z-50">
+        {popupMessage}
+      </div>
+    )}
     {/* <Timer startTimer={startTimer} onFinish={handleTimerFinish} /> */}
     {/* 스테이지 상태 (1 ~ 10까지 예시) */}
     {/* 스테이지 상태 */}
@@ -1652,7 +1736,7 @@ const createPhysicsBody = (
       <span className="block text-xl mt-1 tracking-wide">
         (*물체에 핀은 포함이고 지우개와 밀기 해당 안됨)
         <br />
-        손으로 얼굴 가리지 말아주세요. 협동에 방해됩니다!
+        손으로 얼굴 가리지 말아주세요. 잘 협동할 수 없어요!
       </span>
     </h1>
 
@@ -1750,16 +1834,16 @@ const createPhysicsBody = (
           </button>
           <button
             onClick={() => handleToolChange('pin')}
-            disabled={
-              currentLevel === 11 ||
-              currentLevel === 4  ||
-              currentLevel === 5  ||
-              currentLevel === 6  ||
-              currentLevel === 7  ||
-              currentLevel === 8  ||
-              currentLevel === 9  || 
-              currentLevel === 10
-            }
+            // disabled={
+            //   currentLevel === 11 ||
+            //   currentLevel === 4  ||
+            //   currentLevel === 5  ||
+            //   currentLevel === 6  ||
+            //   currentLevel === 7  ||
+            //   currentLevel === 8  ||
+            //   currentLevel === 9  || 
+            //   currentLevel === 10
+            // }
             className={`
               relative
               p-2 rounded
@@ -1809,13 +1893,14 @@ const createPhysicsBody = (
               className="absolute inset-0 m-auto text-red-500 pointer-events-none"
             />
           )}
+
           <button
-            onClick={() => handleToolChange('push')}
-            className={`relative
-              p-2 rounded
-              ${tool === 'push' ? 'bg-blue-500 text-white' : 'bg-gray-200'}
-              ${(currentLevel === 7 || currentLevel === 8 || currentLevel === 9 || currentLevel === 10 || currentLevel === 10 || currentLevel === 11)? 'opacity-50 cursor-not-allowed' : ''}
-            `}
+              onClick={() => handleToolChange('push')}
+              className={`
+                relative p-2 rounded
+                ${tool === 'push' && !disabledByTimer ? 'bg-blue-500 text-white' : 'bg-gray-200'}
+                ${(disabledByLevel || disabledByTimer) ? 'opacity-50' : ''}
+              `}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1835,6 +1920,18 @@ const createPhysicsBody = (
                 />
               )}
           </button>
+          {pushTimer > 0 && (
+      <div className="flex items-center gap-2">
+        <span className="font-medium">밀기 타이머</span>
+        <div className="w-24 h-2 bg-gray-300 rounded overflow-hidden">
+          <div
+            className="h-2 bg-blue-500 transition-width duration-500"
+            style={{ width: `${(pushTimer / 5) * 100}%` }}
+          />
+        </div>
+      </div>
+    )}
+          
           {currentLevelRef.current === 11 && (
     <>
       <button
