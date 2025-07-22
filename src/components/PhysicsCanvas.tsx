@@ -1720,7 +1720,18 @@ const createPhysicsBody = (
   return (
       <div className="relative flex flex-col items-center gap-2">
         {popupMessage && (
-      <div className="absolute top-4 bg-black bg-opacity-75 text-white px-4 py-2 rounded-md z-50">
+      <div
+          className="
+            absolute
+            top-1/2 left-1/2
+            transform -translate-x-1/2 -translate-y-1/2
+            bg-black bg-opacity-75
+            text-white
+            px-4 py-2
+            rounded-md
+            z-50
+          "
+        >
         {popupMessage}
       </div>
     )}
